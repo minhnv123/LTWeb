@@ -1,3 +1,4 @@
+```text
 /CineStar
 │
 ├── /admin                         <-- KHÔNG GIAN QUẢN TRỊ VIÊN (ADMIN)
@@ -27,8 +28,10 @@
 ├── booking.php                    <-- Trang Sơ đồ Chọn ghế (Seat Map) & Tính tiền bắp nước tự động
 ├── checkout.php                   <-- Trang Thanh toán & Lưu đơn đặt vé vào CSDL
 └── ticket_success.php             <-- Trang Hoàn tất (Hiện thông tin vé & Render mã QR Code)
+```
 
-GHI CHÚ QUAN TRỌNG
-Tất cả mọi người DÙNG CHUNG Cơ sở dữ liệu cấu hình 100% trong file cinema.sql.
-KHÔNG tự động đổi tên tệp, bảng tên hoặc dữ liệu cột tên trên máy cá nhân.
-Hằng ngày trước khi làm nhớ git pullvà làm xong việc nhớ git push.
+> [!IMPORTANT]
+> **GHI CHÚ QUAN TRỌNG**
+> - Tất cả mọi người **DÙNG CHUNG** Cơ sở dữ liệu cấu hình 100% trong file `cinema.sql`.
+> - **KHÔNG** tự động đổi tên tệp, bảng tên hoặc dữ liệu cột tên trên máy cá nhân.
+> - Hằng ngày trước khi làm nhớ `git pull` và làm xong việc nhớ `git push`.
