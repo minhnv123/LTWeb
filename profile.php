@@ -42,7 +42,7 @@ $bookings = $stmt->fetchAll();
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
             <i class="fa-solid fa-ticket-simple text-4xl mb-3 text-slate-600"></i>
             <p>Bạn chưa thực hiện giao dịch đặt vé nào.</p>
-            <a href="index.php" class="inline-block mt-4 px-5 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 transition-all">Đặt vé ngay</a>
+            <a href="booking.php" class="inline-block mt-4 px-5 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 transition-all">Đặt vé ngay</a>
         </div>
     <?php else: ?>
         <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
