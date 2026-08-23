@@ -54,15 +54,17 @@ $bookingCount = isset($_SESSION['bookings']) ? count($_SESSION['bookings']) : 0;
             </a>
 
             <!-- Search Bar (Desktop) -->
-            <form action="index.php" method="GET" class="hidden md:flex flex-1 max-w-md mx-4 relative">
+            <form action="index.php" method="GET" class="hidden md:flex flex-1 max-w-md mx-4 relative" autocomplete="off">
                 <i class="fa-solid fa-magnifying-glass w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input
                     type="text"
                     name="search"
+                    id="searchInputDesktop"
                     value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
                     placeholder="Tìm tên phim, diễn viên, đạo diễn..."
-                    class="w-full bg-slate-900/90 text-sm text-slate-100 pl-10 pr-4 py-2.5 rounded-full border border-slate-800 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all placeholder:text-slate-500"
+                    class="js-search-input w-full bg-slate-900/90 text-sm text-slate-100 pl-10 pr-4 py-2.5 rounded-full border border-slate-800 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all placeholder:text-slate-500"
                 />
+                <div id="searchResultsDesktop" class="js-search-results hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden max-h-[420px] overflow-y-auto z-50"></div>
             </form>
 
             <!-- Navigation Actions -->
@@ -106,15 +108,17 @@ $bookingCount = isset($_SESSION['bookings']) ? count($_SESSION['bookings']) : 0;
         </div>
 
         <!-- Mobile Search Input -->
-        <div class="md:hidden px-4 pb-3">
-            <form action="index.php" method="GET" class="relative">
+        <div class="md:hidden px-4 pb-3 relative">
+            <form action="index.php" method="GET" class="relative" autocomplete="off">
                 <i class="fa-solid fa-magnifying-glass w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input
                     type="text"
                     name="search"
+                    id="searchInputMobile"
                     placeholder="Tìm phim, đạo diễn, diễn viên..."
-                    class="w-full bg-slate-900 text-sm text-slate-100 pl-10 pr-4 py-2 rounded-full border border-slate-800 focus:outline-none focus:border-rose-500"
+                    class="js-search-input w-full bg-slate-900 text-sm text-slate-100 pl-10 pr-4 py-2 rounded-full border border-slate-800 focus:outline-none focus:border-rose-500"
                 />
+                <div id="searchResultsMobile" class="js-search-results hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden max-h-[360px] overflow-y-auto z-50"></div>
             </form>
         </div>
     </header>

@@ -20,6 +20,8 @@
 
     <!-- Thư viện JS bổ trợ (jQuery) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Xử lý tìm kiếm gợi ý bằng AJAX (module Trang Chủ) -->
+    <script src="js/search.js"></script>
 
 </body>
 </html>
