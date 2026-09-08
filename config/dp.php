@@ -1,7 +1,7 @@
 <?php
 $host = '127.0.0.1';
 $port = '3308';        // Cổng MySQL theo hình XAMPP
-$dbname = 'schema';      // Tên DB của bạn (hoặc 'LTweb')
+$dbname = 'cinema';      // Tên DB của bạn (hoặc 'LTweb')
 $username = 'root';
 $password = '';
 

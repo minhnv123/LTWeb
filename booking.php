@@ -4,15 +4,6 @@ ob_start();
 require_once 'config/dp.php';
 include_once 'header.php';
 
-/*
-|--------------------------------------------------------------------------
-| BOOKING PAGE
-|--------------------------------------------------------------------------
-| Tạm thời sử dụng dữ liệu mẫu.
-| Sau khi có cấu trúc database showtimes / seats / bookings /
-| booking_details, phần này sẽ được thay bằng truy vấn PDO.
-|--------------------------------------------------------------------------
-*/
 
 // ---------------------------------------------------------
 // DỮ LIỆU MẪU
@@ -93,12 +84,12 @@ $seatsPerRow = 12;
                 <div class="flex flex-wrap gap-4 mt-2 text-sm text-slate-400">
 
                     <span>
-                        📅
+                        
                         <?= htmlspecialchars($movie['date']) ?>
                     </span>
 
                     <span>
-                        🕐
+                        
                         <?= htmlspecialchars($movie['showtime']) ?>
                     </span>
 
@@ -114,7 +105,7 @@ $seatsPerRow = 12;
                         rounded-xl
                         text-sm font-semibold">
 
-                🎬
+                
                 <?= htmlspecialchars($movie['room']) ?>
 
             </div>
@@ -122,22 +113,16 @@ $seatsPerRow = 12;
         </div>
 
     </div>
-
-
     <!-- =====================================================
          MAIN BOOKING LAYOUT
     ====================================================== -->
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-
         <!-- =================================================
              LEFT CONTENT
         ================================================== -->
 
         <div class="xl:col-span-2 space-y-6">
-
-
             <!-- =============================================
                  SEAT MAP
             ============================================== -->

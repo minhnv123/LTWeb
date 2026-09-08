@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
+    header("Location: ../admin-login.php");
+    exit();
+}
 require_once '../config/database.php';
 
 $error = "";
@@ -22,10 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!is_dir($uploadDir)) { mkdir($uploadDir, 0777, true); }
 
             if (move_uploaded_file($fileTmp, $uploadDir . $newFileName)) {
-                // CRUD Create
-                $stmt = $conn->prepare("INSERT INTO movies (title, duration, description, poster) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("siss", $title, $duration, $description, $newFileName);
-                $stmt->execute();
+                // CRUD Create dùng PDO chuẩn hóa
+                $stmt = $pdo->prepare("INSERT INTO movies (title, duration, description, poster) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$title, $duration, $description, $newFileName]);
                 
                 header("Location: movies_list.php");
                 exit();
@@ -52,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="form-card">
         <h2>Thêm Phim Mới</h2>
-        <?php if($error): ?><p style="color:red;"><?= $error ?></p><?php endif; ?>
+        <?php if($error): ?><p style="color:red;"><?= htmlspecialchars($error) ?></p><?php endif; ?>
         <form action="" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label>Tên Phim:</label>
@@ -71,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="file" name="poster" accept="image/*" required>
             </div>
             <button type="submit" class="btn-submit">Lưu Phim</button>
-            <a href="movies_list.php" style="margin-left: 10px; color: #666;">Hủy</a>
+            <a href="movies_list.php" style="margin-left: 10px; color: #666; text-decoration: none;">Hủy</a>
         </form>
     </div>
 </body>

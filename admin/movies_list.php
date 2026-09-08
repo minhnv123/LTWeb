@@ -1,19 +1,39 @@
 <?php
 session_start();
-require_once '../config/database.php'; // Thay đường dẫn DB tương ứng dự án
+// 1. Kiểm tra khoá bảo vệ Session Admin
+if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
+    header("Location: ../admin-login.php");
+    exit();
+}
 
-// Xử lý Xóa Phim (CRUD Delete)
+require_once '../config/database.php';
+
+// 2. Xử lý Xóa Phim (CRUD Delete)
 if (isset($_GET['delete_id'])) {
     $id = intval($_GET['delete_id']);
-    $stmt = $conn->prepare("DELETE FROM movies WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
+
+    // Lấy tên poster trước để xóa file vật lý trong thư mục uploads
+    $stmtGet = $pdo->prepare("SELECT poster FROM movies WHERE id = ?");
+    $stmtGet->execute([$id]);
+    $movie = $stmtGet->fetch();
+
+    if ($movie) {
+        if (!empty($movie['poster']) && file_exists('../uploads/' . $movie['poster'])) {
+            unlink('../uploads/' . $movie['poster']);
+        }
+
+        // Xóa bản ghi trong MySQL bằng PDO
+        $stmtDelete = $pdo->prepare("DELETE FROM movies WHERE id = ?");
+        $stmtDelete->execute([$id]);
+    }
+
     header("Location: movies_list.php");
     exit();
 }
 
-// Lấy danh sách phim (CRUD Read)
-$result = $conn->query("SELECT * FROM movies ORDER BY id DESC");
+// 3. Lấy danh sách phim (CRUD Read) bằng PDO
+$stmt = $pdo->query("SELECT * FROM movies ORDER BY id DESC");
+$movies = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -22,7 +42,6 @@ $result = $conn->query("SELECT * FROM movies ORDER BY id DESC");
     <title>Danh Sách Phim</title>
     <link rel="stylesheet" href="../style.css">
     <style>
-        /* Tận dụng biến màu đồng bộ dự án */
         body { font-family: sans-serif; background: var(--bg-body, #f4f5f7); margin: 0; }
         .container { padding: 30px; }
         table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
@@ -38,7 +57,10 @@ $result = $conn->query("SELECT * FROM movies ORDER BY id DESC");
 <body>
     <div class="container">
         <h2>Danh Sách Phim Hiện Có</h2>
-        <a href="movie_add.php" class="btn btn-add">+ Thêm Phim Mới</a>
+        <div style="margin-bottom: 15px;">
+            <a href="index.php" class="btn" style="background: #6e6b7b; margin-right: 10px;">← Quay lại Dashboard</a>
+            <a href="movie_add.php" class="btn btn-add">+ Thêm Phim Mới</a>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -50,18 +72,30 @@ $result = $conn->query("SELECT * FROM movies ORDER BY id DESC");
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= $row['id'] ?></td>
-                    <td><img src="../uploads/<?= $row['poster'] ?>" class="poster-img" alt="Poster"></td>
-                    <td><strong><?= htmlspecialchars($row['title']) ?></strong></td>
-                    <td><?= $row['duration'] ?> phút</td>
-                    <td>
-                        <a href="movie_edit.php?id=<?= $row['id'] ?>" class="btn btn-edit">Sửa</a>
-                        <a href="movies_list.php?delete_id=<?= $row['id'] ?>" class="btn btn-delete" onclick="return confirm('Bạn có chắc muốn xóa phim này?')">Xóa</a>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
+                <?php if (!empty($movies)): ?>
+                    <?php foreach ($movies as $row): ?>
+                    <tr>
+                        <td><?= $row['id'] ?></td>
+                        <td>
+                            <?php if (!empty($row['poster']) && file_exists('../uploads/' . $row['poster'])): ?>
+                                <img src="../uploads/<?= htmlspecialchars($row['poster']) ?>" class="poster-img" alt="Poster">
+                            <?php else: ?>
+                                <span style="color: #888; font-size: 12px;">Không có ảnh</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><strong><?= htmlspecialchars($row['title']) ?></strong></td>
+                        <td><?= htmlspecialchars($row['duration']) ?> phút</td>
+                        <td>
+                            <a href="movie_edit.php?id=<?= $row['id'] ?>" class="btn btn-edit">Sửa</a>
+                            <a href="movies_list.php?delete_id=<?= $row['id'] ?>" class="btn btn-delete" onclick="return confirm('Bạn có chắc muốn xóa phim này?')">Xóa</a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #888;">Chưa có phim nào trong cơ sở dữ liệu.</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>

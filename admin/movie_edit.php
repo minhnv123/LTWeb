@@ -1,12 +1,23 @@
 <?php
 session_start();
+if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
+    header("Location: ../admin-login.php");
+    exit();
+}
+
 require_once '../config/database.php';
 
 $id = intval($_GET['id'] ?? 0);
-$result = $conn->query("SELECT * FROM movies WHERE id = $id");
-$movie = $result->fetch_assoc();
 
-if (!$movie) { header("Location: movies_list.php"); exit(); }
+// Lấy thông tin phim bằng PDO Prepared Statement
+$stmt = $pdo->prepare("SELECT * FROM movies WHERE id = ?");
+$stmt->execute([$id]);
+$movie = $stmt->fetch();
+
+if (!$movie) { 
+    header("Location: movies_list.php"); 
+    exit(); 
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title']);
@@ -14,21 +25,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = trim($_POST['description']);
     $posterName = $movie['poster']; // Giữ poster cũ mặc định
 
-    // Nếu có chọn poster mới thì upload lại
+    // Nếu chọn poster mới thì upload và xóa poster cũ
     if (isset($_FILES['poster']) && $_FILES['poster']['error'] === 0) {
         $ext = strtolower(pathinfo($_FILES['poster']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
             $newFileName = time() . '_' . uniqid() . '.' . $ext;
             if (move_uploaded_file($_FILES['poster']['tmp_name'], '../uploads/' . $newFileName)) {
+                
+                // Xóa ảnh cũ khỏi thư mục uploads nếu file tồn tại
+                if (!empty($movie['poster']) && file_exists('../uploads/' . $movie['poster'])) {
+                    unlink('../uploads/' . $movie['poster']);
+                }
+                
                 $posterName = $newFileName;
             }
         }
     }
 
-    // CRUD Update
-    $stmt = $conn->prepare("UPDATE movies SET title = ?, duration = ?, description = ?, poster = ? WHERE id = ?");
-    $stmt->bind_param("sissi", $title, $duration, $description, $posterName, $id);
-    $stmt->execute();
+    // CRUD Update dùng PDO
+    $updateStmt = $pdo->prepare("UPDATE movies SET title = ?, duration = ?, description = ?, poster = ? WHERE id = ?");
+    $updateStmt->execute([$title, $duration, $description, $posterName, $id]);
 
     header("Location: movies_list.php");
     exit();
@@ -59,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-group">
                 <label>Thời Lượng (Phút):</label>
-                <input type="number" name="duration" value="<?= $movie['duration'] ?>" required>
+                <input type="number" name="duration" value="<?= htmlspecialchars($movie['duration']) ?>" required>
             </div>
             <div class="form-group">
                 <label>Mô Tả Phim:</label>
@@ -67,12 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-group">
                 <label>Poster Hiện Tại:</label><br>
-                <img src="../uploads/<?= $movie['poster'] ?>" width="80" style="border-radius:4px; margin-bottom:5px;"><br>
+                <?php if (!empty($movie['poster'])): ?>
+                    <img src="../uploads/<?= htmlspecialchars($movie['poster']) ?>" width="80" style="border-radius:4px; margin-bottom:5px;"><br>
+                <?php endif; ?>
                 <label>Đổi Poster Mới (Nếu có):</label>
                 <input type="file" name="poster" accept="image/*">
             </div>
             <button type="submit" class="btn-submit">Cập Nhật Phim</button>
-            <a href="movies_list.php" style="margin-left: 10px; color: #666;">Hủy</a>
+            <a href="movies_list.php" style="margin-left: 10px; color: #666; text-decoration: none;">Hủy</a>
         </form>
     </div>
 </body>
