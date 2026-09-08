@@ -1,7 +1,6 @@
 <?php
-require_once 'dp.php';
+require_once 'config/dp.php';
 
-// Kiểm tra đăng nhập & redirect PHẢI chạy trước khi include header.php (vì header.php đã in HTML)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
