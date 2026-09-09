@@ -1,5 +1,5 @@
 <?php
-require_once 'config/dp.php';
+require_once 'config/database.php';
 include_once 'header.php';
 
 $movieId = isset($_GET['id']) ? (int) $_GET['id'] : 0;

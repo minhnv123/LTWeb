@@ -1,190 +1,332 @@
 <?php
-require_once 'config/dp.php';
+session_start();
+require_once 'config/database.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['user'])) {
+    header("Location: login.php");
+    exit();
 }
 
-if (!isset($_SESSION['user'])) {
-    header('Location: login.php');
-    exit;
+$showtime_id = intval($_GET['showtime_id'] ?? 0);
+if ($showtime_id <= 0) {
+    header("Location: index.php");
+    exit();
 }
 
-$userId = (int)$_SESSION['user']['id'];
-$errors = [];
-
-function money($n) {
-    return number_format($n, 0, ',', '.') . 'đ';
-}
-
-/**
- * BƯỚC 1: Nhận dữ liệu ghế/combo từ booking.php (POST) và lưu tạm vào session
- * để hiển thị trang xác nhận trước khi ghi vào CSDL.
- */
-if (isset($_POST['seats']) && isset($_POST['showtime_id']) && !isset($_POST['confirm'])) {
-    $_SESSION['pending_booking'] = [
-        'showtime_id' => (int)$_POST['showtime_id'],
-        'seats'       => trim($_POST['seats']),
-        'combos'      => isset($_POST['combos']) ? $_POST['combos'] : '[]',
-        'total_price' => (float)$_POST['total_price'],
-    ];
-}
-
-/**
- * BƯỚC 2: Xác nhận thanh toán -> kiểm tra lại ghế còn trống -> ghi vào bảng bookings
- */
-if (isset($_POST['confirm']) && isset($_SESSION['pending_booking'])) {
-    $pb = $_SESSION['pending_booking'];
-    $showtimeId = $pb['showtime_id'];
-    $requestedSeats = array_filter(array_map('trim', explode(',', $pb['seats'])));
-
-    // Kiểm tra lại ghế đã bị người khác đặt trong lúc chờ hay chưa (chống trùng ghế)
-    $soldStmt = $pdo->prepare("SELECT seats FROM bookings WHERE showtime_id = ? AND status IN ('pending','paid','used')");
-    $soldStmt->execute([$showtimeId]);
-    $soldSeats = [];
-    foreach ($soldStmt->fetchAll() as $row) {
-        foreach (explode(',', $row['seats']) as $s) {
-            $soldSeats[trim($s)] = true;
-        }
-    }
-
-    $conflict = array_filter($requestedSeats, fn($s) => isset($soldSeats[$s]));
-
-    if (empty($requestedSeats)) {
-        $errors[] = 'Không có ghế nào được chọn.';
-    } elseif (!empty($conflict)) {
-        $errors[] = 'Rất tiếc, ghế ' . implode(', ', $conflict) . ' vừa được người khác đặt. Vui lòng chọn ghế khác.';
-        unset($_SESSION['pending_booking']);
-    } else {
-        // Tạo mã vé duy nhất
-        do {
-            $bookingCode = 'CS' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
-            $check = $pdo->prepare("SELECT id FROM bookings WHERE booking_code = ?");
-            $check->execute([$bookingCode]);
-        } while ($check->fetch());
-
-        $insert = $pdo->prepare("
-            INSERT INTO bookings (booking_code, user_id, showtime_id, seats, combos, total_price, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'paid')
-        ");
-        $insert->execute([
-            $bookingCode,
-            $userId,
-            $showtimeId,
-            implode(',', $requestedSeats),
-            $pb['combos'],
-            $pb['total_price'],
-        ]);
-
-        unset($_SESSION['pending_booking']);
-        header('Location: ticket_success.php?code=' . urlencode($bookingCode));
-        exit;
-    }
-}
-
-$pending = $_SESSION['pending_booking'] ?? null;
-
-// Từ đây trở đi chỉ còn RENDER HTML (không còn header()/redirect nào nữa) nên mới include header.php
-include_once 'header.php';
-
-// Nếu không có đơn hàng nào đang chờ, đưa người dùng quay lại trang chủ
-if (!$pending) {
-    echo '<div class="max-w-2xl mx-auto px-4 py-24 text-center">';
-    if (!empty($errors)) {
-        echo '<p class="text-rose-400 mb-6">' . htmlspecialchars($errors[0]) . '</p>';
-    }
-    echo '<i class="fa-solid fa-ticket text-slate-700 text-4xl mb-4"></i>';
-    echo '<h1 class="text-xl font-bold text-slate-100">Không có đơn đặt vé nào đang chờ thanh toán</h1>';
-    echo '<a href="index.php" class="inline-block mt-6 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold transition-all">Về Trang Chủ</a>';
-    echo '</div>';
-    include_once 'footer.php';
-    exit;
-}
-
-// Lấy thông tin suất chiếu để hiển thị lại cho khách xác nhận
+// Lấy đầy đủ thông tin Suất chiếu + Phim + Rạp
 $stmt = $pdo->prepare("
-    SELECT s.show_date, s.show_time, s.price,
-           m.title, m.poster,
-           c.name AS cinema_name
-    FROM showtimes s
-    JOIN movies m ON m.id = s.movie_id
-    JOIN cinemas c ON c.id = s.cinema_id
+    SELECT s.*, 
+           m.title AS movie_title, m.poster, m.duration,
+           c.name AS cinema_name, c.address AS cinema_address
+    FROM showtimes s 
+    JOIN movies m ON s.movie_id = m.id 
+    LEFT JOIN cinemas c ON s.cinema_id = c.id
     WHERE s.id = ?
 ");
-$stmt->execute([$pending['showtime_id']]);
-$info = $stmt->fetch();
+$stmt->execute([$showtime_id]);
+$showtime = $stmt->fetch();
 
-$seats = array_filter(array_map('trim', explode(',', $pending['seats'])));
-$combos = json_decode($pending['combos'], true) ?: [];
-$seatTotal = count($seats) * (float)($info['price'] ?? 0);
-$comboTotal = array_reduce($combos, fn($sum, $c) => $sum + ($c['price'] * $c['qty']), 0);
+if (!$showtime) {
+    header("Location: index.php");
+    exit();
+}
+
+// Lấy danh sách ghế đã đặt từ booking_details hoặc bookings
+$bookedSeats = [];
+try {
+    $stmtBooked = $pdo->prepare("
+        SELECT bd.seat_number 
+        FROM booking_details bd 
+        JOIN bookings b ON b.id = bd.booking_id 
+        WHERE b.showtime_id = ? AND b.status IN ('pending','paid','used')
+    ");
+    $stmtBooked->execute([$showtime_id]);
+    $bookedSeats = $stmtBooked->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) {
+    $bookedSeats = [];
+}
+
+$basePrice = $showtime['price'] ?? 75000;
+$vipPrice = $basePrice + 20000;
+
+// Danh sách Combo Bắp Nước
+$combosList = [
+    ['id' => 'cb1', 'name' => 'Combo Solo (1 Bắp + 1 Nước)', 'price' => 69000],
+    ['id' => 'cb2', 'name' => 'Combo Couple (1 Bắp lớn + 2 Nước)', 'price' => 99000],
+];
 ?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chọn ghế - <?= htmlspecialchars($showtime['movie_title']) ?></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen pb-12">
 
-<div class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-    <h1 class="text-xl font-extrabold text-slate-100 mb-1"><i class="fa-solid fa-file-invoice text-rose-500 mr-2"></i>Xác Nhận & Thanh Toán</h1>
-    <p class="text-sm text-slate-400 mb-6">Vui lòng kiểm tra lại thông tin đơn hàng trước khi hoàn tất.</p>
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold text-white text-center mb-6">
+            <i class="fa-solid fa-couch text-yellow-500 mr-2"></i>Chọn Ghế & Dịch Vụ
+        </h1>
 
-    <?php if (!empty($errors)): ?>
-        <div class="bg-rose-950/50 border border-rose-800 text-rose-300 text-sm rounded-xl px-4 py-3 mb-6">
-            <i class="fa-solid fa-circle-exclamation mr-2"></i><?php echo htmlspecialchars($errors[0]); ?>
-        </div>
-    <?php endif; ?>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- CỘT TRÁI: SƠ ĐỒ GHẾ + COMBO -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- 1. SƠ ĐỒ CHỌN GHẾ DẠNG LƯỚI -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <div class="w-full bg-gradient-to-r from-transparent via-yellow-500 to-transparent h-1 rounded-full mb-2"></div>
+                    <p class="text-center text-xs uppercase tracking-widest font-bold text-slate-400 mb-8">Màn Hình Chiếu</p>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <?php if ($info): ?>
-        <div class="flex items-center gap-4 pb-5 border-b border-slate-800">
-            <img src="uploads/<?php echo htmlspecialchars($info['poster']); ?>" onerror="this.src='https://placehold.co/64x88/0f172a/94a3b8?text=CS'" class="w-14 h-20 object-cover rounded-lg border border-slate-800">
-            <div>
-                <p class="font-bold text-slate-100"><?php echo htmlspecialchars($info['title']); ?></p>
-                <p class="text-xs text-slate-400 mt-1"><?php echo htmlspecialchars($info['cinema_name']); ?></p>
-                <p class="text-xs text-slate-400"><?php echo date('d/m/Y', strtotime($info['show_date'])); ?> • <?php echo substr($info['show_time'], 0, 5); ?></p>
-            </div>
-        </div>
-        <?php endif; ?>
+                    <div class="grid grid-cols-8 gap-2 max-w-md mx-auto mb-8">
+                        <?php 
+                        $rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+                        foreach ($rows as $row) {
+                            $isVipRow = in_array($row, ['D', 'E', 'F']);
+                            $price = $isVipRow ? $vipPrice : $basePrice;
+                            
+                            for ($i = 1; $i <= 8; $i++) {
+                                $seatCode = $row . $i;
+                                $isBooked = in_array($seatCode, $bookedSeats);
+                                $seatType = $isVipRow ? 'VIP' : 'Thường';
 
-        <div class="py-5 border-b border-slate-800">
-            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ghế đã chọn</p>
-            <div class="flex flex-wrap gap-2">
-                <?php foreach ($seats as $s): ?>
-                    <span class="px-3 py-1 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-bold border border-amber-500/30"><?php echo htmlspecialchars($s); ?></span>
-                <?php endforeach; ?>
-            </div>
-        </div>
+                                // CSS phân biệt 4 loại ghế
+                                if ($isBooked) {
+                                    $seatClass = 'bg-red-900/80 text-red-300 border border-red-700/50 cursor-not-allowed opacity-80';
+                                } elseif ($isVipRow) {
+                                    $seatClass = 'bg-purple-950 hover:bg-purple-800 text-purple-200 border border-purple-500/60';
+                                } else {
+                                    $seatClass = 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700';
+                                }
 
-        <?php if (!empty($combos)): ?>
-        <div class="py-5 border-b border-slate-800">
-            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Bắp nước</p>
-            <?php foreach ($combos as $c): ?>
-                <div class="flex justify-between text-sm text-slate-300 mb-1">
-                    <span><?php echo htmlspecialchars($c['name']); ?> × <?php echo (int)$c['qty']; ?></span>
-                    <span><?php echo money($c['price'] * $c['qty']); ?></span>
+                                $disabledAttr = $isBooked ? 'disabled' : '';
+
+                                echo '<button type="button" ';
+                                echo 'data-seat="' . $seatCode . '" ';
+                                echo 'data-price="' . $price . '" ';
+                                echo 'data-type="' . $seatType . '" ';
+                                echo $disabledAttr . ' ';
+                                echo 'class="seat-btn aspect-square rounded-lg text-xs font-bold transition-all flex items-center justify-center ' . $seatClass . '">';
+                                echo $seatCode;
+                                echo '</button>';
+                            }
+                        } 
+                        ?>
+                    </div>
+
+                    <!-- CHÚ THÍCH 4 LOẠI GHẾ -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-300 border-t border-slate-800 pt-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-4 h-4 rounded bg-slate-800 border border-slate-700 inline-block"></span> Ghế Thường
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-4 h-4 rounded bg-purple-950 border border-purple-500/60 inline-block"></span> Ghế VIP
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-4 h-4 rounded bg-yellow-500 inline-block"></span> Đang chọn
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-4 h-4 rounded bg-red-900/80 border border-red-700 inline-block"></span> Đã đặt
+                        </div>
+                    </div>
                 </div>
-            <?php endforeach; ?>
+
+                <!-- 2. CHỌN BẮP NƯỚC / COMBO -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-800 pb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-burger text-yellow-500"></i> Chọn Bắp Nước / Combo
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <?php foreach ($combosList as $cb): ?>
+                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <p class="font-bold text-white text-sm"><?= htmlspecialchars($cb['name']) ?></p>
+                                    <p class="text-yellow-400 text-xs font-mono mt-1"><?= number_format($cb['price'], 0, ',', '.') ?> đ</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="updateCombo('<?= $cb['id'] ?>', '<?= htmlspecialchars($cb['name']) ?>', <?= $cb['price'] ?>, -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold transition-all">-</button>
+                                    <span id="qty-<?= $cb['id'] ?>" class="text-sm font-bold text-white min-w-[16px] text-center">0</span>
+                                    <button type="button" onclick="updateCombo('<?= $cb['id'] ?>', '<?= htmlspecialchars($cb['name']) ?>', <?= $cb['price'] ?>, 1)" class="w-7 h-7 bg-yellow-500 hover:bg-yellow-600 text-slate-900 rounded-lg font-bold transition-all">+</button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CỘT PHẢI: HIỂN THỊ THÔNG TIN CHI TIẾT ĐỐI CHIẾU (KHÔNG CÓ PHÒNG CHIẾU) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl h-fit sticky top-6 space-y-6">
+                
+                <!-- 1. THÔNG TIN PHIM & RẠP CHIẾU -->
+                <div class="border-b border-slate-800 pb-5 space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-film text-yellow-500"></i> Thông Tin Đặt Vé
+                    </h3>
+                    
+                    <div class="flex gap-4">
+                        <img src="<?= htmlspecialchars($showtime['poster'] ?? 'https://via.placeholder.com/100x150') ?>" 
+                             alt="<?= htmlspecialchars($showtime['movie_title']) ?>" 
+                             class="w-20 h-28 object-cover rounded-lg border border-slate-700 shadow-md">
+                        <div class="space-y-1.5 flex-1">
+                            <h4 class="font-bold text-white text-base leading-snug"><?= htmlspecialchars($showtime['movie_title']) ?></h4>
+                            <p class="text-xs text-slate-400">
+                                <i class="fa-regular fa-clock text-slate-500 mr-1"></i>Thời lượng: <?= $showtime['duration'] ?? 120 ?> phút
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- KHỐI ĐỐI CHIẾU RẠP & GIỜ CHIẾU -->
+                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 space-y-2.5 text-xs">
+                        <div class="flex items-start gap-2 text-slate-300">
+                            <i class="fa-solid fa-location-dot text-red-500 mt-0.5"></i>
+                            <div>
+                                <span class="font-bold text-white block"><?= htmlspecialchars($showtime['cinema_name'] ?? 'Rạp Lotte / CGV Cinema') ?></span>
+                                <?php if (!empty($showtime['cinema_address'])): ?>
+                                    <span class="text-slate-500 text-[11px] block"><?= htmlspecialchars($showtime['cinema_address']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 text-yellow-400 font-semibold border-t border-slate-800/60 pt-2.5">
+                            <i class="fa-regular fa-calendar-days"></i>
+                            <span>
+                                Suất chiếu: <?= isset($showtime['start_time']) ? date('H:i - d/m/Y', strtotime($showtime['start_time'])) : (isset($showtime['showtime']) ? date('H:i - d/m/Y', strtotime($showtime['showtime'])) : '19:30 - Hôm nay') ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. CHI TIẾT TÍNH TIỀN TỰ ĐỘNG -->
+                <div>
+                    <h3 class="text-base font-bold text-white mb-3">Tóm Tắt Chi Phí</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between text-slate-400">
+                            <span>Ghế chọn:</span>
+                            <span id="selected-seats-text" class="font-bold text-yellow-400">Chưa chọn</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Tiền ghế:</span>
+                            <span id="seat-total-text" class="font-mono text-slate-200">0 đ</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Bắp nước:</span>
+                            <span id="combo-total-text" class="font-mono text-slate-200">0 đ</span>
+                        </div>
+                        <div class="border-t border-slate-800 pt-3 flex justify-between text-base font-bold text-white">
+                            <span>Tổng tiền:</span>
+                            <span id="total-price-text" class="text-yellow-400 font-mono text-xl">0 đ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. FORM GỬI THÔNG TIN VỀ CHECKOUT.PHP -->
+                <form action="checkout.php" method="POST">
+                    <input type="hidden" name="showtime_id" value="<?= $showtime['id'] ?>">
+                    <input type="hidden" name="seats" id="seats-input" value="">
+                    <input type="hidden" name="seats_json" id="seats-json-input" value="">
+                    <input type="hidden" name="combos_json" id="combos-json-input" value="[]">
+                    <input type="hidden" name="total_price" id="total-price-input" value="0">
+                    
+                    <button type="submit" id="btn-submit" disabled 
+                            class="w-full bg-slate-800 text-slate-500 font-bold py-3.5 rounded-xl transition-all text-sm cursor-not-allowed">
+                        Thanh Toán
+                    </button>
+                </form>
+            </div>
+
         </div>
-        <?php endif; ?>
+    </main>
 
-        <div class="pt-5 space-y-1.5">
-            <div class="flex justify-between text-sm text-slate-400">
-                <span>Tiền ghế</span><span><?php echo money($seatTotal); ?></span>
-            </div>
-            <div class="flex justify-between text-sm text-slate-400">
-                <span>Bắp nước</span><span><?php echo money($comboTotal); ?></span>
-            </div>
-            <div class="flex justify-between items-center pt-3 mt-2 border-t border-slate-800">
-                <span class="font-bold text-slate-100">Tổng Thanh Toán</span>
-                <span class="text-2xl font-extrabold text-rose-500"><?php echo money($pending['total_price']); ?></span>
-            </div>
-        </div>
+    <script>
+        const selectedSeats = [];
+        const selectedCombos = {};
+        
+        const seatBtns = document.querySelectorAll('.seat-btn:not([disabled])');
+        const selectedSeatsText = document.getElementById('selected-seats-text');
+        const seatTotalText = document.getElementById('seat-total-text');
+        const comboTotalText = document.getElementById('combo-total-text');
+        const totalPriceText = document.getElementById('total-price-text');
+        
+        const seatsInput = document.getElementById('seats-input');
+        const seatsJsonInput = document.getElementById('seats-json-input');
+        const combosJsonInput = document.getElementById('combos-json-input');
+        const totalPriceInput = document.getElementById('total-price-input');
+        const btnSubmit = document.getElementById('btn-submit');
 
-        <form method="POST" class="mt-6 flex gap-3">
-            <a href="booking.php?showtime_id=<?php echo (int)$pending['showtime_id']; ?>" class="flex-1 text-center py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-all">
-                <i class="fa-solid fa-arrow-left mr-1.5"></i>Chọn Lại Ghế
-            </a>
-            <button type="submit" name="confirm" value="1" class="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition-all shadow-lg shadow-rose-600/20">
-                <i class="fa-solid fa-circle-check mr-1.5"></i>Xác Nhận Thanh Toán
-            </button>
-        </form>
-    </div>
-</div>
+        // Xử lý sự kiện click chọn / bỏ chọn ghế
+        seatBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const seat = btn.getAttribute('data-seat');
+                const price = parseFloat(btn.getAttribute('data-price'));
+                const type = btn.getAttribute('data-type');
+                
+                const index = selectedSeats.findIndex(s => s.code === seat);
 
-<?php include_once 'footer.php'; ?>
+                if (index > -1) {
+                    selectedSeats.splice(index, 1);
+                    // Đưa ghế về màu ban đầu
+                    if (type === 'VIP') {
+                        btn.className = "seat-btn aspect-square rounded-lg text-xs font-bold transition-all flex items-center justify-center bg-purple-950 hover:bg-purple-800 text-purple-200 border border-purple-500/60";
+                    } else {
+                        btn.className = "seat-btn aspect-square rounded-lg text-xs font-bold transition-all flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700";
+                    }
+                } else {
+                    selectedSeats.push({ code: seat, price: price, type: type });
+                    // Đổi sang trạng thái màu vàng đang chọn
+                    btn.className = "seat-btn aspect-square rounded-lg text-xs font-bold transition-all flex items-center justify-center bg-yellow-500 text-slate-950 shadow-lg shadow-yellow-500/30 scale-105";
+                }
+                calculateTotal();
+            });
+        });
+
+        // Tăng / giảm số lượng combo
+        function updateCombo(id, name, price, delta) {
+            if (!selectedCombos[id]) {
+                selectedCombos[id] = { id: id, name: name, price: price, qty: 0 };
+            }
+            selectedCombos[id].qty += delta;
+            if (selectedCombos[id].qty < 0) selectedCombos[id].qty = 0;
+            
+            document.getElementById(`qty-${id}`).textContent = selectedCombos[id].qty;
+            calculateTotal();
+        }
+
+        // Cập nhật tổng tiền và trạng thái nút thanh toán
+        function calculateTotal() {
+            const seatTotal = selectedSeats.reduce((sum, s) => sum + s.price, 0);
+            
+            let comboTotal = 0;
+            const comboArray = [];
+            for (let key in selectedCombos) {
+                if (selectedCombos[key].qty > 0) {
+                    comboTotal += selectedCombos[key].price * selectedCombos[key].qty;
+                    comboArray.push(selectedCombos[key]);
+                }
+            }
+
+            const grandTotal = seatTotal + comboTotal;
+            const seatCodes = selectedSeats.map(s => s.code);
+
+            selectedSeatsText.textContent = seatCodes.length > 0 ? seatCodes.join(', ') : 'Chưa chọn';
+            seatTotalText.textContent = seatTotal.toLocaleString('vi-VN') + ' đ';
+            comboTotalText.textContent = comboTotal.toLocaleString('vi-VN') + ' đ';
+            totalPriceText.textContent = grandTotal.toLocaleString('vi-VN') + ' đ';
+
+            seatsInput.value = seatCodes.join(',');
+            seatsJsonInput.value = JSON.stringify(selectedSeats);
+            combosJsonInput.value = JSON.stringify(comboArray);
+            totalPriceInput.value = grandTotal;
+
+            if (selectedSeats.length > 0) {
+                btnSubmit.disabled = false;
+                btnSubmit.className = "w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold py-3.5 rounded-xl transition-all text-sm cursor-pointer shadow-lg shadow-yellow-500/20";
+            } else {
+                btnSubmit.disabled = true;
+                btnSubmit.className = "w-full bg-slate-800 text-slate-500 font-bold py-3.5 rounded-xl transition-all text-sm cursor-not-allowed";
+            }
+        }
+    </script>
+</body>
+</html>

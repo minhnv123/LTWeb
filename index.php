@@ -1,39 +1,39 @@
 <?php
-require_once 'config/dp.php';
+// Bật hiển thị lỗi để kiểm tra nếu có sự cố
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+require_once 'config/database.php';
 include_once 'header.php';
 
-// ============================================================
-// 1. LẤY DANH SÁCH THỂ LOẠI (dùng cho dropdown Bộ lọc)
-// ============================================================
-$genreStmt = $pdo->query("SELECT genre FROM movies");
-$genreRaw  = $genreStmt->fetchAll(PDO::FETCH_COLUMN);
+// -------------------------
+// 1. LẤY DANH SÁCH THỂ LOẠI
 $genreList = [];
-foreach ($genreRaw as $g) {
-    foreach (explode(',', $g) as $part) {
-        $part = trim($part);
-        if ($part !== '' && !in_array($part, $genreList)) {
-            $genreList[] = $part;
+try {
+    $genreStmt = $pdo->query("SELECT genre FROM movies WHERE genre IS NOT NULL AND genre != ''");
+    $genreRaw  = $genreStmt->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($genreRaw as $g) {
+        foreach (explode(',', $g) as $part) {
+            $part = trim($part);
+            if ($part !== '' && !in_array($part, $genreList)) {
+                $genreList[] = $part;
+            }
         }
     }
-}
-sort($genreList);
+    sort($genreList);
+} catch (Exception $e) {}
 
-// ============================================================
-// 2. ĐỌC THAM SỐ BỘ LỌC TỪ GET
-// ============================================================
+// 2. LẤY THAM SỐ BỘ LỌC
 $filterGenre = isset($_GET['genre']) ? trim($_GET['genre']) : '';
 $filterDate  = isset($_GET['date']) ? trim($_GET['date']) : '';
 $searchTerm  = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-// ============================================================
-// 3. HÀM DÙNG CHUNG: LẤY DANH SÁCH PHIM THEO STATUS + BỘ LỌC
-// ============================================================
+// 3. HÀM LẤY PHIM
 function getMovies($pdo, $status, $genre, $date, $search) {
     $sql = "SELECT DISTINCT m.* FROM movies m";
     $conditions = ["m.status = :status"];
     $params = [':status' => $status];
 
-    // Nếu lọc theo ngày chiếu -> phải join sang bảng showtimes
     if ($date !== '') {
         $sql .= " INNER JOIN showtimes s ON s.movie_id = m.id";
         $conditions[] = "s.show_date = :sdate";
@@ -50,7 +50,7 @@ function getMovies($pdo, $status, $genre, $date, $search) {
         $params[':search'] = '%' . $search . '%';
     }
 
-    $sql .= " WHERE " . implode(' AND ', $conditions) . " ORDER BY m.release_date DESC";
+    $sql .= " WHERE " . implode(' AND ', $conditions) . " ORDER BY m.id DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -60,17 +60,13 @@ function getMovies($pdo, $status, $genre, $date, $search) {
 $nowShowingMovies = getMovies($pdo, 'now_showing', $filterGenre, $filterDate, $searchTerm);
 $comingSoonMovies = getMovies($pdo, 'coming_soon', $filterGenre, $filterDate, $searchTerm);
 
-// ============================================================
-// 4. LẤY 5 PHIM MỚI NHẤT ĐANG CHIẾU CHO BANNER SLIDER
-// ============================================================
-$bannerStmt = $pdo->prepare("SELECT * FROM movies WHERE status = 'now_showing' ORDER BY release_date DESC LIMIT 5");
+// 4. BANNER SLIDER
+$bannerStmt = $pdo->prepare("SELECT * FROM movies WHERE status = 'now_showing' ORDER BY id DESC LIMIT 5");
 $bannerStmt->execute();
 $bannerMovies = $bannerStmt->fetchAll();
 ?>
 
-<!-- ============================================================ -->
-<!-- 1. BANNER SLIDER -->
-<!-- ============================================================ -->
+<!-- BANNER SLIDER -->
 <?php if (!empty($bannerMovies)): ?>
 <section class="relative w-full h-[300px] sm:h-[420px] lg:h-[520px] overflow-hidden bg-slate-900" id="bannerSlider">
     <?php foreach ($bannerMovies as $i => $movie): ?>
@@ -97,7 +93,6 @@ $bannerMovies = $bannerStmt->fetchAll();
         </div>
     <?php endforeach; ?>
 
-    <!-- Nút điều hướng -->
     <button id="bannerPrev" class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-slate-950/60 hover:bg-rose-600 text-white flex items-center justify-center transition-all">
         <i class="fa-solid fa-chevron-left"></i>
     </button>
@@ -105,7 +100,6 @@ $bannerMovies = $bannerStmt->fetchAll();
         <i class="fa-solid fa-chevron-right"></i>
     </button>
 
-    <!-- Dấu chấm chỉ thị -->
     <div class="absolute bottom-3 right-4 z-20 flex gap-2" id="bannerDots">
         <?php foreach ($bannerMovies as $i => $movie): ?>
             <button class="banner-dot w-2.5 h-2.5 rounded-full transition-all <?php echo $i === 0 ? 'bg-rose-500 w-6' : 'bg-slate-500/60'; ?>" data-index="<?php echo $i; ?>"></button>
@@ -116,9 +110,7 @@ $bannerMovies = $bannerStmt->fetchAll();
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- ============================================================ -->
-    <!-- 2. BỘ LỌC PHIM (Thể loại + Ngày chiếu) -->
-    <!-- ============================================================ -->
+    <!-- BỘ LỌC PHIM -->
     <form action="index.php" method="GET" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-10 flex flex-wrap items-end gap-4">
         <?php if ($searchTerm !== ''): ?>
             <input type="hidden" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>">
@@ -154,14 +146,7 @@ $bannerMovies = $bannerStmt->fetchAll();
         </div>
     </form>
 
-    <?php if ($searchTerm !== ''): ?>
-        <p class="text-slate-400 text-sm mb-6">
-            Kết quả tìm kiếm cho "<span class="text-rose-400 font-semibold"><?php echo htmlspecialchars($searchTerm); ?></span>"
-        </p>
-    <?php endif; ?>
-
     <?php
-    // Hàm hiển thị lưới danh sách phim (dùng chung cho 2 mục dưới)
     function renderMovieGrid($movies) {
         if (empty($movies)) {
             echo '<div class="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400">
@@ -190,18 +175,14 @@ $bannerMovies = $bannerStmt->fetchAll();
     }
     ?>
 
-    <!-- ============================================================ -->
-    <!-- 3. PHIM ĐANG CHIẾU -->
-    <!-- ============================================================ -->
+    <!-- PHIM ĐANG CHIẾU -->
     <div class="flex items-center gap-2 mb-5">
         <span class="w-1.5 h-6 bg-rose-500 rounded-full"></span>
         <h2 class="text-xl font-bold text-white">Phim Đang Chiếu</h2>
     </div>
     <?php renderMovieGrid($nowShowingMovies); ?>
 
-    <!-- ============================================================ -->
-    <!-- 4. PHIM SẮP CHIẾU -->
-    <!-- ============================================================ -->
+    <!-- PHIM SẮP CHIẾU -->
     <div class="flex items-center gap-2 mt-12 mb-5">
         <span class="w-1.5 h-6 bg-amber-400 rounded-full"></span>
         <h2 class="text-xl font-bold text-white">Phim Sắp Chiếu</h2>
@@ -210,9 +191,6 @@ $bannerMovies = $bannerStmt->fetchAll();
 
 </div>
 
-<!-- ============================================================ -->
-<!-- JS: BANNER SLIDER TỰ ĐỘNG CHẠY -->
-<!-- ============================================================ -->
 <script>
 (function () {
     const slides = document.querySelectorAll('.banner-slide');
@@ -239,15 +217,11 @@ $bannerMovies = $bannerStmt->fetchAll();
     function next() { goTo(current + 1); }
     function prev() { goTo(current - 1); }
 
-    function startAutoplay() {
-        timer = setInterval(next, 5000);
-    }
-    function stopAutoplay() {
-        clearInterval(timer);
-    }
+    function startAutoplay() { timer = setInterval(next, 5000); }
+    function stopAutoplay() { clearInterval(timer); }
 
-    document.getElementById('bannerNext').addEventListener('click', () => { next(); stopAutoplay(); startAutoplay(); });
-    document.getElementById('bannerPrev').addEventListener('click', () => { prev(); stopAutoplay(); startAutoplay(); });
+    document.getElementById('bannerNext')?.addEventListener('click', () => { next(); stopAutoplay(); startAutoplay(); });
+    document.getElementById('bannerPrev')?.addEventListener('click', () => { prev(); stopAutoplay(); startAutoplay(); });
     dots.forEach(dot => {
         dot.addEventListener('click', () => {
             goTo(parseInt(dot.dataset.index, 10));

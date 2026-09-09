@@ -1,18 +1,15 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-    header("Location: ../admin-login.php");
-    exit();
-}
-require_once '../config/database.php';
+// 1. Nhúng Header Admin (Đã bao gồm Session Check, CSDL & Sidebar)
+include_once 'header.php';
 
 $error = "";
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title']);
-    $duration = intval($_POST['duration']);
-    $description = trim($_POST['description']);
 
-    // Xử lý Upload Poster (Validate .jpg/.png)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $title = trim($_POST['title'] ?? '');
+    $duration = intval($_POST['duration'] ?? 0);
+    $description = trim($_POST['description'] ?? '');
+
+    // 2. Xử lý Upload Poster (Validate file .jpg, .jpeg, .png, .webp)
     if (isset($_FILES['poster']) && $_FILES['poster']['error'] === 0) {
         $allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
         $fileName = $_FILES['poster']['name'];
@@ -23,59 +20,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newFileName = time() . '_' . uniqid() . '.' . $ext;
             $uploadDir = '../uploads/';
             
-            if (!is_dir($uploadDir)) { mkdir($uploadDir, 0777, true); }
+            // Tự động tạo thư mục uploads ở gốc nếu chưa có
+            if (!is_dir($uploadDir)) { 
+                mkdir($uploadDir, 0777, true); 
+            }
 
             if (move_uploaded_file($fileTmp, $uploadDir . $newFileName)) {
-                // CRUD Create dùng PDO chuẩn hóa
+                // 3. Thêm phim vào CSDL
                 $stmt = $pdo->prepare("INSERT INTO movies (title, duration, description, poster) VALUES (?, ?, ?, ?)");
                 $stmt->execute([$title, $duration, $description, $newFileName]);
                 
                 header("Location: movies_list.php");
                 exit();
-            } else { $error = "Lỗi khi tải file lên!"; }
-        } else { $error = "Chỉ chấp nhận file ảnh dạng .jpg, .png, .webp"; }
-    } else { $error = "Vui lòng chọn ảnh poster!"; }
+            } else { 
+                $error = "Lỗi khi lưu file ảnh vào hệ thống!"; 
+            }
+        } else { 
+            $error = "Chỉ chấp nhận file ảnh định dạng .jpg, .jpeg, .png, .webp"; 
+        }
+    } else { 
+        $error = "Vui lòng chọn file ảnh poster!"; 
+    }
 }
 ?>
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Thêm Phim Mới</title>
-    <link rel="stylesheet" href="../style.css">
-    <style>
-        body { font-family: sans-serif; background: var(--bg-body, #f4f5f7); padding: 30px; }
-        .form-card { background: #fff; max-width: 600px; margin: 0 auto; padding: 25px; border-radius: 8px; box-shadow: var(--shadow-card); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], input[type="number"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px; box-sizing: border-box; }
-        .btn-submit { background: var(--accent-color, #7367f0); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="form-card">
-        <h2>Thêm Phim Mới</h2>
-        <?php if($error): ?><p style="color:red;"><?= htmlspecialchars($error) ?></p><?php endif; ?>
-        <form action="" method="POST" enctype="multipart/form-data">
-            <div class="form-group">
-                <label>Tên Phim:</label>
-                <input type="text" name="title" required>
-            </div>
-            <div class="form-group">
-                <label>Thời Lượng (Phút):</label>
-                <input type="number" name="duration" required>
-            </div>
-            <div class="form-group">
-                <label>Mô Tả Phim:</label>
-                <textarea name="description" rows="4"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Poster Phim (.jpg / .png):</label>
-                <input type="file" name="poster" accept="image/*" required>
-            </div>
-            <button type="submit" class="btn-submit">Lưu Phim</button>
-            <a href="movies_list.php" style="margin-left: 10px; color: #666; text-decoration: none;">Hủy</a>
-        </form>
+
+<!-- TIÊU ĐỀ TRANG -->
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-plus-circle text-rose-500"></i> Thêm Phim Mới
+        </h1>
+        <p class="text-xs text-slate-400 mt-1">Thêm dữ liệu phim mới vào hệ thống CineStar</p>
     </div>
-</body>
-</html>
+    <a href="movies_list.php" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2">
+        <i class="fa-solid fa-arrow-left"></i> Quay lại
+    </a>
+</div>
+
+<!-- FORM THÊM PHIM (ĐỒNG BỘ TAILWIND DARK THEME) -->
+<div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl shadow-xl">
+    
+    <?php if (!empty($error)): ?>
+        <div class="bg-rose-500/10 border border-rose-500/50 text-rose-400 text-sm p-3 rounded-xl mb-6 font-medium flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
+        </div>
+    <?php endif; ?>
+
+    <form action="" method="POST" enctype="multipart/form-data" class="space-y-5">
+        <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Tên Phim <span class="text-rose-500">*</span></label>
+            <input type="text" name="title" required placeholder="Nhập tên phim..." 
+                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500 text-white">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Thời Lượng (Phút) <span class="text-rose-500">*</span></label>
+            <input type="number" name="duration" required placeholder="Ví dụ: 120" 
+                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500 text-white">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Mô Tả Phim</label>
+            <textarea name="description" rows="4" placeholder="Tóm tắt nội dung phim..." 
+                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500 text-white"></textarea>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Ảnh Poster (.jpg, .png, .webp) <span class="text-rose-500">*</span></label>
+            <input type="file" name="poster" accept="image/*" required 
+                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-600 file:text-white hover:file:bg-rose-700 cursor-pointer">
+        </div>
+
+        <div class="pt-4 flex items-center gap-3">
+            <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-rose-600/30 text-sm">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Lưu Phim
+            </button>
+            <a href="movies_list.php" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-6 py-3 rounded-xl transition-all text-sm">
+                Hủy
+            </a>
+        </div>
+    </form>
+</div>
+
+<?php
+// 4. Nhúng Footer Admin (Tự đóng Layout)
+include_once 'footer.php';
+?>

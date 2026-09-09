@@ -94,9 +94,12 @@ $bookingCount = isset($_SESSION['bookings']) ? count($_SESSION['bookings']) : 0;
 
                 <!-- Tài Khoản (Đăng Nhập / Đăng Xuất) -->
                 <?php if (isset($_SESSION['user'])): ?>
-                    <a href="logout.php" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-rose-600 text-white shadow-md shadow-rose-600/30 hover:bg-rose-700 transition-all" title="Đăng xuất">
+                    <?php 
+                        $displayName = $_SESSION['user']['full_name'] ?? $_SESSION['user']['name'] ?? $_SESSION['user']['username'] ?? 'Tài Khoản';
+                    ?>
+                    <a href="logout.php" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-rose-600 text-white shadow-md shadow-rose-600/30 hover:bg-rose-700 transition-all" title="Đăng xuất" onclick="return confirm('Bạn có chắc muốn đăng xuất?')">
                         <i class="fa-solid fa-right-from-bracket"></i>
-                        <span class="hidden sm:inline"><?php echo htmlspecialchars($_SESSION['user']['full_name']); ?></span>
+                        <span class="hidden sm:inline"><?php echo htmlspecialchars($displayName); ?></span>
                     </a>
                 <?php else: ?>
                     <a href="login.php" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-200 hover:text-white hover:bg-rose-600 transition-all">

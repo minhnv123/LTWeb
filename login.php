@@ -1,6 +1,6 @@
 <?php
 ob_start();
-require_once 'config/dp.php';
+require_once 'config/database.php';
 include_once 'header.php';
 
 // Chuyển hướng nếu đã đăng nhập

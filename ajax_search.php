@@ -1,7 +1,7 @@
 <?php
 // File này chỉ trả về 1 đoạn HTML nhỏ (không include header/footer)
 // vì được gọi bằng jQuery AJAX để nhúng trực tiếp vào dropdown gợi ý.
-require_once 'config/dp.php';
+require_once 'config/database.php';
 
 $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
 

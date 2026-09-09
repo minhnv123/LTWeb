@@ -1,12 +1,6 @@
 <?php
-session_start();
-// 1. Kiểm tra khoá bảo vệ Session Admin
-if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-    header("Location: ../admin-login.php");
-    exit();
-}
-
-require_once '../config/database.php';
+// 1. Nhúng Header Admin (Đã bao gồm Session Check, CSDL & Sidebar)
+include_once 'header.php';
 
 // 2. Xử lý Xóa Phim (CRUD Delete)
 if (isset($_GET['delete_id'])) {
@@ -31,73 +25,84 @@ if (isset($_GET['delete_id'])) {
     exit();
 }
 
-// 3. Lấy danh sách phim (CRUD Read) bằng PDO
+// 3. Lấy danh sách phim (CRUD Read)
 $stmt = $pdo->query("SELECT * FROM movies ORDER BY id DESC");
 $movies = $stmt->fetchAll();
 ?>
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Danh Sách Phim</title>
-    <link rel="stylesheet" href="../style.css">
-    <style>
-        body { font-family: sans-serif; background: var(--bg-body, #f4f5f7); margin: 0; }
-        .container { padding: 30px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color, #e2e8f0); }
-        th { background: var(--primary-color, #1e1e2d); color: #fff; }
-        .poster-img { width: 60px; height: 80px; object-fit: cover; border-radius: 4px; }
-        .btn { padding: 6px 12px; border-radius: 4px; text-decoration: none; color: #fff; font-size: 14px; }
-        .btn-add { background: var(--color-success, #28c76f); display: inline-block; margin-bottom: 15px; }
-        .btn-edit { background: var(--color-warning, #ff9f43); }
-        .btn-delete { background: var(--color-danger, #ea5455); }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Danh Sách Phim Hiện Có</h2>
-        <div style="margin-bottom: 15px;">
-            <a href="index.php" class="btn" style="background: #6e6b7b; margin-right: 10px;">← Quay lại Dashboard</a>
-            <a href="movie_add.php" class="btn btn-add">+ Thêm Phim Mới</a>
-        </div>
-        <table>
+
+<!-- TIÊU ĐỀ TRANG -->
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-film text-rose-500"></i> Quản Lý Danh Sách Phim
+        </h1>
+        <p class="text-xs text-slate-400 mt-1">Danh sách tất cả phim hiện có trong cơ sở dữ liệu CineStar</p>
+    </div>
+    <a href="movie_add.php" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-rose-600/30 flex items-center gap-2">
+        <i class="fa-solid fa-plus"></i> Thêm Phim Mới
+    </a>
+</div>
+
+<!-- BẢNG DANH SÁCH PHIM -->
+<div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
             <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Poster</th>
-                    <th>Tên Phim</th>
-                    <th>Thời Lượng</th>
-                    <th>Hành Động</th>
+                <tr class="bg-slate-950/60 border-b border-slate-800 text-slate-400 uppercase text-[11px] font-semibold tracking-wider">
+                    <th class="py-4 px-6">ID</th>
+                    <th class="py-4 px-6">Poster</th>
+                    <th class="py-4 px-6">Tên Phim</th>
+                    <th class="py-4 px-6">Thời Lượng</th>
+                    <th class="py-4 px-6 text-center">Hành Động</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-slate-800/60 text-sm">
                 <?php if (!empty($movies)): ?>
                     <?php foreach ($movies as $row): ?>
-                    <tr>
-                        <td><?= $row['id'] ?></td>
-                        <td>
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="py-4 px-6 font-mono text-slate-500">#<?= $row['id'] ?></td>
+                        <td class="py-4 px-6">
                             <?php if (!empty($row['poster']) && file_exists('../uploads/' . $row['poster'])): ?>
-                                <img src="../uploads/<?= htmlspecialchars($row['poster']) ?>" class="poster-img" alt="Poster">
+                                <img src="../uploads/<?= htmlspecialchars($row['poster']) ?>" class="w-12 h-16 object-cover rounded-lg border border-slate-700 shadow-sm" alt="Poster">
                             <?php else: ?>
-                                <span style="color: #888; font-size: 12px;">Không có ảnh</span>
+                                <div class="w-12 h-16 bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-center text-[10px] text-slate-500 text-center p-1">
+                                    Không ảnh
+                                </div>
                             <?php endif; ?>
                         </td>
-                        <td><strong><?= htmlspecialchars($row['title']) ?></strong></td>
-                        <td><?= htmlspecialchars($row['duration']) ?> phút</td>
-                        <td>
-                            <a href="movie_edit.php?id=<?= $row['id'] ?>" class="btn btn-edit">Sửa</a>
-                            <a href="movies_list.php?delete_id=<?= $row['id'] ?>" class="btn btn-delete" onclick="return confirm('Bạn có chắc muốn xóa phim này?')">Xóa</a>
+                        <td class="py-4 px-6 font-semibold text-white">
+                            <?= htmlspecialchars($row['title']) ?>
+                        </td>
+                        <td class="py-4 px-6 text-slate-300">
+                            <span class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-md text-xs font-mono">
+                                <?= htmlspecialchars($row['duration']) ?> phút
+                            </span>
+                        </td>
+                        <td class="py-4 px-6 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <a href="movie_edit.php?id=<?= $row['id'] ?>" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1">
+                                    <i class="fa-solid fa-pen"></i> Sửa
+                                </a>
+                                <a href="movies_list.php?delete_id=<?= $row['id'] ?>" onclick="return confirm('Bạn có chắc muốn xóa phim này?')" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1">
+                                    <i class="fa-solid fa-trash"></i> Xóa
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #888;">Chưa có phim nào trong cơ sở dữ liệu.</td>
+                        <td colspan="5" class="py-8 text-center text-slate-500 italic">
+                            Chưa có phim nào trong cơ sở dữ liệu.
+                        </td>
                     </tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+
+<?php
+// 4. Nhúng Footer Admin (Tự động đóng Layout)
+include_once 'footer.php';
+?>
