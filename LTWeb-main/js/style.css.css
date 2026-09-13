@@ -1,0 +1,30 @@
+/* ===================================================
+   BẢNG MÀU CHUẨN CỦA DỰ ÁN (Project Theme Variables)
+   =================================================== */
+:root {
+  /* 1. MÀU CHÍNH & MÀU NHẤN (Brand & Accent) */
+  --primary-color: #1e1e2d;       /* Màu chủ đạo (Header, Sidebar) */
+  --primary-hover: #151521;       /* Màu chủ đạo dạng hover/active */
+  --accent-color: #7367f0;        /* Màu nhấn (Button, Link, Highlight) */
+  --accent-hover: #5e50ee;        /* Màu nhấn khi hover */
+
+  /* 2. MÀU NỀN (Backgrounds) */
+  --bg-body: #f4f5f7;             /* Nền chung toàn trang */
+  --bg-card: #ffffff;             /* Nền thẻ, bảng, form */
+  --bg-sidebar: #1e1e2d;          /* Nền thanh menu Sidebar */
+
+  /* 3. MÀU CHỮ (Typography) */
+  --text-main: #2d3748;           /* Màu chữ chính (Tiêu đề, nội dung) */
+  --text-muted: #a1a5b7;          /* Màu chữ phụ/mờ (Subtext, Placeholder) */
+  --text-light: #ffffff;          /* Màu chữ sáng (trên nền tối) */
+
+  /* 4. MÀU THÔNG BÁO / TRẠNG THÁI (System Status) */
+  --color-success: #28c76f;       /* Thành công / Hoàn thành */
+  --color-warning: #ff9f43;       /* Cảnh báo / Đang xử lý */
+  --color-danger: #ea5455;        /* Lỗi / Tải lên thất bại / Xóa */
+  --color-info: #00cfdd;          /* Thông tin */
+
+  /* 5. VIỀN & BÓNG DẠNG CHUẨN (Borders & Shadows) */
+  --border-color: #e2e8f0;        /* Đường viền bảng, input */
+  --shadow-card: 0 4px 20px 0 rgba(0, 0, 0, 0.05); /* Bóng đổ nhẹ cho Card */
+}
