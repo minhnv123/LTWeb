@@ -23,7 +23,7 @@ if (!$movie) {
 }
 
 // ============================================================
-// 2. LẤY DANH SÁCH SUẤT CHIẾU (Chỉ lấy các suất chưa diễn ra)
+// 2. LẤY DANH SÁCH SUẤT CHIẾU (Đã bỏ lọc NOW() để tránh ẩn lịch)
 // ============================================================
 $stmt = $pdo->prepare("
     SELECT s.id AS showtime_id, s.show_date, s.show_time, s.price,
@@ -31,7 +31,6 @@ $stmt = $pdo->prepare("
     FROM showtimes s
     JOIN cinemas c ON c.id = s.cinema_id
     WHERE s.movie_id = ? 
-      AND CONCAT(s.show_date, ' ', s.show_time) >= NOW()
     ORDER BY s.show_date ASC, s.show_time ASC
 ");
 $stmt->execute([$movieId]);

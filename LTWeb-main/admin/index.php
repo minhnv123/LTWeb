@@ -1,151 +1,246 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Đoạn code cũ của bạn tiếp tục từ đây...
+require_once 'config/db.php'; 
 include_once 'header.php';
 
-// 2. Lấy dữ liệu thống kê từ CSDL
-try {
-    // Đếm tổng số phim
-    $countMovies = $pdo->query("SELECT COUNT(*) FROM movies")->fetchColumn() ?: 0;
+// 1. LẤY DANH SÁCH THỂ LOẠI
+$genreStmt = $pdo->query("SELECT DISTINCT genre FROM movies WHERE genre IS NOT NULL AND genre != ''");
+$genreRaw  = $genreStmt->fetchAll(PDO::FETCH_COLUMN);
+$genreList = [];
 
-    // Đếm tổng số người dùng (khách hàng)
-    $countUsers = $pdo->query("SELECT COUNT(*) FROM users WHERE LOWER(TRIM(role)) != 'admin'")->fetchColumn() ?: 0;
-
-    // Đếm tổng số suất chiếu
-    $countShowtimes = $pdo->query("SELECT COUNT(*) FROM showtimes")->fetchColumn() ?: 0;
-
-    // Thống kê đơn đặt vé
-    $countBookings = 0;
-    $totalRevenue = 0;
-    $recentBookings = [];
-
-    $checkBookings = $pdo->query("SHOW TABLES LIKE 'bookings'")->fetch();
-    if ($checkBookings) {
-        $countBookings = $pdo->query("SELECT COUNT(*) FROM bookings")->fetchColumn() ?: 0;
-        $totalRevenue = $pdo->query("SELECT SUM(total_price) FROM bookings WHERE status IN ('paid', 'used', 'completed')")->fetchColumn() ?: 0;
-        
-        // Lấy 5 đơn đặt vé mới nhất
-        $stmtRecent = $pdo->query("
-            SELECT b.*, u.full_name, m.title as movie_title 
-            FROM bookings b 
-            LEFT JOIN users u ON b.user_id = u.id 
-            LEFT JOIN showtimes s ON b.showtime_id = s.id 
-            LEFT JOIN movies m ON s.movie_id = m.id 
-            ORDER BY b.id DESC LIMIT 5
-        ");
-        $recentBookings = $stmtRecent->fetchAll(PDO::FETCH_ASSOC);
+foreach ($genreRaw as $g) {
+    $parts = explode(',', $g);
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part !== '' && !in_array($part, $genreList, true)) {
+            $genreList[] = $part;
+        }
     }
-} catch (PDOException $e) {
-    $countMovies = $countUsers = $countShowtimes = $countBookings = $totalRevenue = 0;
-    $recentBookings = [];
+}
+sort($genreList);
+
+// 2. LẤY THAM SỐ BỘ LỌC
+$filterGenre = isset($_GET['genre']) ? trim($_GET['genre']) : '';
+$searchTerm  = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+function escapeLike($string) {
+    return addcslashes($string, '%_\\');
+}
+
+// 3. HÀM LẤY DANH SÁCH PHIM
+function getMovies($pdo, $status, $genre, $search) {
+    $sql = "SELECT DISTINCT m.* FROM movies m";
+    $conditions = ["m.status = :status"];
+    $params = [':status' => $status];
+
+    if ($genre !== '') {
+        $conditions[] = "m.genre LIKE :genre";
+        $params[':genre'] = '%' . escapeLike($genre) . '%';
+    }
+
+    if ($search !== '') {
+        $conditions[] = "(m.title LIKE :search OR m.director LIKE :search OR m.cast LIKE :search)";
+        $params[':search'] = '%' . escapeLike($search) . '%';
+    }
+
+    $sql .= " WHERE " . implode(' AND ', $conditions) . " ORDER BY m.release_date DESC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$nowShowingMovies = getMovies($pdo, 'now_showing', $filterGenre, $searchTerm);
+$comingSoonMovies = getMovies($pdo, 'coming_soon', $filterGenre, $searchTerm);
+
+// 4. LẤY BANNER SLIDER
+$bannerStmt = $pdo->prepare("SELECT * FROM movies WHERE status = 'now_showing' ORDER BY release_date DESC LIMIT 5");
+$bannerStmt->execute();
+$bannerMovies = $bannerStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// 5. HÀM HIỂN THỊ LƯỚI PHIM
+function renderMovieGrid($movies) {
+    if (empty($movies)) {
+        echo '<div class="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400">
+                <p>Không tìm thấy phim phù hợp.</p>
+              </div>';
+        return;
+    }
+    echo '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">';
+    foreach ($movies as $movie) {
+        $poster   = htmlspecialchars($movie['poster'] ?? '');
+        $title    = htmlspecialchars($movie['title'] ?? '');
+        $genre    = htmlspecialchars($movie['genre'] ?? '');
+        $rating   = htmlspecialchars($movie['rating'] ?? 'P');
+        $id       = (int)$movie['id'];
+
+        $badgeBg = 'bg-green-600';
+        if ($rating === 'K')   $badgeBg = 'bg-blue-600';
+        if ($rating === 'T13') $badgeBg = 'bg-amber-500';
+        if ($rating === 'T16') $badgeBg = 'bg-orange-600';
+        if ($rating === 'T18') $badgeBg = 'bg-rose-600';
+
+        echo '<a href="movie_detail.php?id=' . $id . '" class="group block bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-rose-500/60 transition-all duration-300 relative">
+                <div class="aspect-[2/3] w-full overflow-hidden bg-slate-800 relative">
+                    <span class="absolute top-2 left-2 z-10 ' . $badgeBg . ' text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                        ' . $rating . '
+                    </span>
+                    <img src="uploads/' . $poster . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
+                         alt="' . $title . '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="p-3">
+                    <h3 class="text-sm font-bold text-white line-clamp-2 group-hover:text-rose-400 transition-colors">' . $title . '</h3>
+                    <p class="text-xs text-slate-500 mt-1 line-clamp-1">' . $genre . '</p>
+                </div>
+              </a>';
+    }
+    echo '</div>';
 }
 ?>
 
-<!-- Top Bar Welcome -->
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-    <div>
-        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
-            Chào mừng trở lại, <span class="text-rose-500"><?= htmlspecialchars($_SESSION['user']['full_name'] ?? 'Admin') ?></span>!
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">Dưới đây là thống kê tình hình hoạt động của rạp chiếu phim.</p>
-    </div>
-    <a href="movie_add.php" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-2">
-        <i class="fa-solid fa-plus"></i> Thêm Phim Mới
-    </a>
-</div>
+<!-- BANNER SLIDER -->
+<?php if (!empty($bannerMovies)): ?>
+<section class="relative w-full h-[300px] sm:h-[420px] lg:h-[520px] overflow-hidden bg-slate-900" id="bannerSlider">
+    <?php foreach ($bannerMovies as $i => $movie): ?>
+        <div class="banner-slide absolute inset-0 transition-opacity duration-700 <?php echo $i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'; ?>"
+             data-index="<?php echo $i; ?>">
+            <img src="uploads/<?php echo htmlspecialchars($movie['poster'] ?? ''); ?>"
+                 onerror="this.src='https://placehold.co/1600x600/0f172a/f8fafc?text=CineStar'"
+                 alt="<?php echo htmlspecialchars($movie['title']); ?>"
+                 class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-6 sm:p-10 max-w-3xl">
+                <span class="inline-block bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-3">ĐANG CHIẾU</span>
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-white mb-2">
+                    <?php echo htmlspecialchars($movie['title']); ?>
+                </h2>
+                <p class="hidden sm:block text-slate-300 text-sm mb-4 line-clamp-2 max-w-xl">
+                    <?php echo htmlspecialchars($movie['description'] ?? ''); ?>
+                </p>
+                <a href="movie_detail.php?id=<?php echo (int)$movie['id']; ?>"
+                   class="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all">
+                    Đặt Vé Ngay
+                </a>
+            </div>
+        </div>
+    <?php endforeach; ?>
 
-<!-- STATS GRID -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-    <!-- Thẻ 1: Tổng Phim -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-        <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng Số Phim</p>
-            <h3 class="text-2xl font-black text-white mt-1"><?= number_format($countMovies) ?></h3>
-            <a href="movies_list.php" class="text-[11px] text-rose-400 hover:underline mt-2 inline-block font-medium">Quản lý phim &rarr;</a>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center text-xl">
-            <i class="fa-solid fa-film"></i>
-        </div>
-    </div>
+    <button id="bannerPrev" class="absolute left-3 top-1/2 -translate-y-1/2 z-20 px-3 py-2 rounded-xl bg-slate-950/70 hover:bg-rose-600 text-white text-xs font-bold transition-all">
+        Trước
+    </button>
+    <button id="bannerNext" class="absolute right-3 top-1/2 -translate-y-1/2 z-20 px-3 py-2 rounded-xl bg-slate-950/70 hover:bg-rose-600 text-white text-xs font-bold transition-all">
+        Sau
+    </button>
 
-    <!-- Thẻ 2: Tổng Suất Chiếu -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-        <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lịch Chiếu Phim</p>
-            <h3 class="text-2xl font-black text-white mt-1"><?= number_format($countShowtimes) ?></h3>
-            <a href="showtimes_list.php" class="text-[11px] text-emerald-400 hover:underline mt-2 inline-block font-medium">Quản lý lịch chiếu &rarr;</a>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
-            <i class="fa-solid fa-calendar-days"></i>
-        </div>
+    <div class="absolute bottom-3 right-4 z-20 flex gap-2" id="bannerDots">
+        <?php foreach ($bannerMovies as $i => $movie): ?>
+            <button class="banner-dot w-2.5 h-2.5 rounded-full transition-all <?php echo $i === 0 ? 'bg-rose-500 w-6' : 'bg-slate-500/60'; ?>" data-index="<?php echo $i; ?>"></button>
+        <?php endforeach; ?>
     </div>
+</section>
+<?php endif; ?>
 
-    <!-- Thẻ 3: Đơn Đặt Vé -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-        <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Đơn Đặt Vé</p>
-            <h3 class="text-2xl font-black text-white mt-1"><?= number_format($countBookings) ?></h3>
-            <a href="check_ticket.php" class="text-[11px] text-amber-400 hover:underline mt-2 inline-block font-medium">Soát vé khách hàng &rarr;</a>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
-            <i class="fa-solid fa-ticket"></i>
-        </div>
-    </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- Thẻ 4: Doanh Thu -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg flex items-center justify-between">
-        <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng Doanh Thu</p>
-            <h3 class="text-xl font-black text-emerald-400 mt-1"><?= number_format($totalRevenue) ?> đ</h3>
-            <span class="text-[11px] text-slate-500 mt-2 block">Tự động tính từ CSDL</span>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl">
-            <i class="fa-solid fa-money-bill-wave"></i>
-        </div>
-    </div>
-</div>
+    <!-- BỘ LỌC PHIM -->
+    <form action="index.php" method="GET" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-10 flex flex-col sm:flex-row items-end gap-4">
+        <?php if ($searchTerm !== ''): ?>
+            <input type="hidden" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>">
+        <?php endif; ?>
 
-<!-- RECENT BOOKINGS TABLE -->
-<div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl mb-6">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-clock-history text-rose-500"></i> Đơn Đặt Vé Mới Nhất
-        </h3>
-        <a href="check_ticket.php" class="text-xs text-rose-400 hover:underline font-medium">Soát vé &rarr;</a>
-    </div>
+        <div class="w-full sm:flex-1">
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Thể loại</label>
+            <select name="genre" class="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                <option value="">Tất cả thể loại</option>
+                <?php foreach ($genreList as $g): ?>
+                    <option value="<?php echo htmlspecialchars($g); ?>" <?php echo ($filterGenre === $g) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($g); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
-    <?php if (!empty($recentBookings)): ?>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        <th class="py-3 px-4">Mã Đơn</th>
-                        <th class="py-3 px-4">Khách Hàng</th>
-                        <th class="py-3 px-4">Phim</th>
-                        <th class="py-3 px-4">Tổng Tiền</th>
-                        <th class="py-3 px-4 text-center">Trạng Thái</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800 text-xs">
-                    <?php foreach ($recentBookings as $b): ?>
-                        <tr class="hover:bg-slate-800/40">
-                            <td class="py-3 px-4 font-mono font-bold text-rose-400">#<?= htmlspecialchars($b['booking_code'] ?? $b['id']) ?></td>
-                            <td class="py-3 px-4"><?= htmlspecialchars($b['full_name'] ?? 'Khách vãng lai') ?></td>
-                            <td class="py-3 px-4 font-semibold text-white"><?= htmlspecialchars($b['movie_title'] ?? 'N/A') ?></td>
-                            <td class="py-3 px-4 font-bold text-emerald-400"><?= number_format($b['total_price'] ?? 0) ?> đ</td>
-                            <td class="py-3 px-4 text-center">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                                    <?= htmlspecialchars($b['status'] ?? 'Thành công') ?>
-                                </span>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <div class="flex gap-2 w-full sm:w-auto">
+            <button type="submit" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-all cursor-pointer">
+                Lọc Phim
+            </button>
+            <?php if ($filterGenre !== '' || $searchTerm !== ''): ?>
+                <a href="index.php" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-5 py-2.5 rounded-xl text-sm transition-all inline-block text-center">
+                    Bỏ Lọc
+                </a>
+            <?php endif; ?>
         </div>
-    <?php else: ?>
-        <div class="py-8 text-center text-slate-500 italic text-sm">
-            Chưa có đơn đặt vé nào gần đây.
-        </div>
+    </form>
+
+    <?php if ($searchTerm !== ''): ?>
+        <p class="text-slate-400 text-sm mb-6">
+            Kết quả tìm kiếm cho "<span class="text-rose-400 font-semibold"><?php echo htmlspecialchars($searchTerm); ?></span>"
+        </p>
     <?php endif; ?>
+
+    <!-- PHIM ĐANG CHIẾU -->
+    <div class="flex items-center gap-2 mb-5">
+        <span class="w-1.5 h-6 bg-rose-500 rounded-full"></span>
+        <h2 class="text-xl font-bold text-white">Phim Đang Chiếu</h2>
+    </div>
+    <?php renderMovieGrid($nowShowingMovies); ?>
+
+    <!-- PHIM SẮP CHIẾU -->
+    <div class="flex items-center gap-2 mt-12 mb-5">
+        <span class="w-1.5 h-6 bg-amber-400 rounded-full"></span>
+        <h2 class="text-xl font-bold text-white">Phim Sắp Chiếu</h2>
+    </div>
+    <?php renderMovieGrid($comingSoonMovies); ?>
+
 </div>
+
+<script>
+(function () {
+    const slides = document.querySelectorAll('.banner-slide');
+    const dots = document.querySelectorAll('.banner-dot');
+    const prevBtn = document.getElementById('bannerPrev');
+    const nextBtn = document.getElementById('bannerNext');
+
+    if (slides.length <= 1) return;
+
+    let current = 0;
+    let timer = null;
+
+    function goTo(index) {
+        slides[current].classList.remove('opacity-100', 'z-10');
+        slides[current].classList.add('opacity-0', 'z-0');
+        dots[current].classList.remove('bg-rose-500', 'w-6');
+        dots[current].classList.add('bg-slate-500/60');
+
+        current = (index + slides.length) % slides.length;
+
+        slides[current].classList.remove('opacity-0', 'z-0');
+        slides[current].classList.add('opacity-100', 'z-10');
+        dots[current].classList.remove('bg-slate-500/60');
+        dots[current].classList.add('bg-rose-500', 'w-6');
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    function startAutoplay() { timer = setInterval(next, 5000); }
+    function stopAutoplay() { clearInterval(timer); }
+
+    if (nextBtn) nextBtn.addEventListener('click', () => { next(); stopAutoplay(); startAutoplay(); });
+    if (prevBtn) prevBtn.addEventListener('click', () => { prev(); stopAutoplay(); startAutoplay(); });
+
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            goTo(parseInt(dot.dataset.index, 10));
+            stopAutoplay(); startAutoplay();
+        });
+    });
+
+    startAutoplay();
+})();
+</script>
 
 <?php include_once 'footer.php'; ?>

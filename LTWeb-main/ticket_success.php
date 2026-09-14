@@ -4,7 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Sửa đường dẫn kết nối DB đúng chuẩn
 require_once 'config/db.php';
 
 // Kiểm tra quyền đăng nhập
@@ -12,8 +11,6 @@ if (!isset($_SESSION['user'])) {
     header('Location: login.php');
     exit;
 }
-
-include_once 'header.php';
 
 function money($n) {
     return number_format($n, 0, ',', '.') . 'đ';
@@ -37,9 +34,11 @@ $stmt = $pdo->prepare("
 $stmt->execute([$code]);
 $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Kiểm tra tồn tại vé và phân quyền (chính chủ hoặc admin mới xem được)
+// Kiểm tra tồn tại vé và phân quyền
 $currentUserId = $_SESSION['user']['id'] ?? 0;
 $currentUserRole = $_SESSION['user']['role'] ?? '';
+
+include_once 'header.php';
 
 if (!$ticket || ((int)$ticket['user_id'] !== (int)$currentUserId && $currentUserRole !== 'admin')) {
     echo '<div class="max-w-2xl mx-auto px-4 py-24 text-center">
@@ -53,8 +52,10 @@ if (!$ticket || ((int)$ticket['user_id'] !== (int)$currentUserId && $currentUser
 }
 
 $seats = array_filter(array_map('trim', explode(',', $ticket['seats'] ?? '')));
+$combos = json_decode($ticket['combos'] ?? '[]', true) ?: [];
 ?>
-<!-- Thư viện tạo Mã QR -->
+
+<!-- Thư viện QRCode.js với CDN ổn định -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <div class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -69,12 +70,13 @@ $seats = array_filter(array_map('trim', explode(',', $ticket['seats'] ?? '')));
                  alt="<?php echo htmlspecialchars($ticket['title'] ?? ''); ?>"
                  class="w-16 h-24 object-cover rounded-xl border border-slate-800 shadow-md">
             <div>
-                <span class="inline-block px-2.5 py-0.5 rounded-md bg-rose-500/15 text-rose-400 text-[11px] font-mono font-bold border border-rose-500/30 mb-1.5">
-                    MÃ VÉ: <?php echo htmlspecialchars($ticket['booking_code']); ?>
+                <span class="inline-block px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[11px] font-mono font-bold border border-emerald-500/30 mb-1.5">
+                    <i class="fa-solid fa-circle-check mr-1"></i>ĐẶT VÉ THÀNH CÔNG
                 </span>
                 <h1 class="font-bold text-lg sm:text-xl text-slate-100 leading-tight"><?php echo htmlspecialchars($ticket['title']); ?></h1>
                 <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
                     <i class="fa-regular fa-clock text-slate-500"></i> <?php echo (int)($ticket['duration'] ?? 0); ?> phút
+                    <span class="mx-1">•</span> Mã vé: <span class="font-mono text-amber-400 font-bold"><?php echo htmlspecialchars($ticket['booking_code']); ?></span>
                 </p>
             </div>
         </div>
@@ -98,9 +100,24 @@ $seats = array_filter(array_map('trim', explode(',', $ticket['seats'] ?? '')));
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-0.5">Tổng Tiền</p>
                 <p class="text-rose-500 font-bold text-base"><?php echo money($ticket['total_price']); ?></p>
             </div>
+
+            <!-- Bắp nước nếu có -->
+            <?php if (!empty($combos)): ?>
+            <div class="col-span-2 border-t border-slate-800/80 pt-3 mt-1">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Bắp Nước Đã Đặt</p>
+                <div class="space-y-1">
+                    <?php foreach ($combos as $c): ?>
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>+ <?php echo htmlspecialchars($c['name']); ?> (x<?php echo $c['qty']; ?>)</span>
+                            <span class="font-medium text-slate-400"><?php echo money($c['total']); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
-        <!-- Chân vé: QR Code check-in -->
+        <!-- Chân vé: Mã QR -->
         <div class="p-8 flex flex-col items-center justify-center gap-3 bg-slate-950/20">
             <div class="p-3 bg-white rounded-2xl shadow-md border border-slate-200">
                 <div id="qrcode"></div>
@@ -109,13 +126,12 @@ $seats = array_filter(array_map('trim', explode(',', $ticket['seats'] ?? '')));
                 Xuất trình mã QR này tại quầy rạp để đổi vé cứng hoặc quét mã vào phòng chiếu.
             </p>
             
-            <!-- Nút chức năng phụ -->
             <div class="flex items-center gap-3 mt-4 print:hidden">
                 <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-print"></i> In vé
                 </button>
-                <a href="history.php" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-ticket"></i> Tất cả vé
+                <a href="index.php" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-house"></i> Trang chủ
                 </a>
             </div>
         </div>
@@ -124,14 +140,18 @@ $seats = array_filter(array_map('trim', explode(',', $ticket['seats'] ?? '')));
 </div>
 
 <script>
-    // Khởi tạo QR Code dựa trên mã đặt vé
-    new QRCode(document.getElementById("qrcode"), {
-        text: <?php echo json_encode($ticket['booking_code']); ?>,
-        width: 150,
-        height: 150,
-        colorDark : "#0f172a",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+    document.addEventListener("DOMContentLoaded", function() {
+        var qrContainer = document.getElementById("qrcode");
+        if (qrContainer) {
+            new QRCode(qrContainer, {
+                text: <?php echo json_encode($ticket['booking_code']); ?>,
+                width: 150,
+                height: 150,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
     });
 </script>
 

@@ -234,8 +234,8 @@ $combosList = [
                 <form action="checkout.php" method="POST">
                     <input type="hidden" name="showtime_id" value="<?= $showtime['id'] ?>">
                     <input type="hidden" name="seats" id="seats-input" value="">
-                    <input type="hidden" name="seats_json" id="seats-json-input" value="">
-                    <input type="hidden" name="combos_json" id="combos-json-input" value="[]">
+                    <input type="hidden" name="selected_seats" id="seats-json-input" value="">
+                    <input type="hidden" name="foods" id="combos-json-input" value="[]">
                     <input type="hidden" name="total_price" id="total-price-input" value="0">
                     
                     <button type="submit" id="btn-submit" disabled 

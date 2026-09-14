@@ -1,16 +1,21 @@
 <?php
-require_once 'config/db.php'; // 1. Sửa db.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['user'])) {
+require_once 'config/db.php';
+
+// Kiểm tra quyền đăng nhập linh hoạt theo cả 2 dạng session
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['user'])) {
     header('Location: login.php');
     exit;
 }
 
-$userId = (int)$_SESSION['user']['id'];
+$userId = (int)($_SESSION['user_id'] ?? $_SESSION['user']['id'] ?? 0);
 $errors = [];
 
 function money($n) {
@@ -109,7 +114,7 @@ if ($pending) {
                             ];
                         }
                     } catch (PDOException $e) {
-                        // Skip if foods table not present
+                        // Bỏ qua nếu không có bảng foods
                     }
                 }
             }
@@ -162,26 +167,28 @@ if (isset($_POST['confirm']) && $pending) {
             $showtimeId,
             implode(',', $requestedSeats),
             json_encode($comboListDetails, JSON_UNESCAPED_UNICODE),
-            $grandTotal, // Giá đã kiểm tra an toàn
+            $grandTotal,
         ]);
 
         unset($_SESSION['pending_booking']);
-        header('Location: ticket_success.php?code=' . urlencode($bookingCode));
+        
+        // Chuyển hướng thành công bằng JavaScript chống lỗi trắng trang
+        echo "<script>window.location.href = 'ticket_success.php?code=" . urlencode($bookingCode) . "';</script>";
         exit;
     }
 }
 
-// RENDER HTML
+// RENDER HTML (CHỈ RENDER TẠI ĐÂY)
 include_once 'header.php';
 
 if (!$pending || !$info) {
     echo '<div class="max-w-2xl mx-auto px-4 py-24 text-center">';
     if (!empty($errors)) {
-        echo '<p class="text-rose-400 mb-6">' . htmlspecialchars($errors[0]) . '</p>';
+        echo '<p class="text-rose-400 mb-6 font-semibold">' . htmlspecialchars($errors[0]) . '</p>';
     }
     echo '<i class="fa-solid fa-ticket text-slate-700 text-4xl mb-4"></i>';
-    echo '<h1 class="text-xl font-bold text-slate-100">Không có đơn đặt vé nào đang chờ thanh toán</h1>';
-    echo '<a href="index.php" class="inline-block mt-6 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold transition-all">Về Trang Chủ</a>';
+    echo '<h1 class="text-xl font-bold text-slate-100 mb-2">Không có đơn đặt vé nào đang chờ thanh toán</h1>';
+    echo '<a href="index.php" class="inline-block mt-4 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold transition-all">Về Trang Chủ</a>';
     echo '</div>';
     include_once 'footer.php';
     exit;
@@ -198,9 +205,9 @@ if (!$pending || !$info) {
         </div>
     <?php endif; ?>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <div class="flex items-center gap-4 pb-5 border-b border-slate-800">
-            <img src="uploads/<?php echo htmlspecialchars($info['poster']); ?>" onerror="this.src='https://placehold.co/64x88/0f172a/94a3b8?text=CS'" class="w-14 h-20 object-cover rounded-lg border border-slate-800">
+            <img src="uploads/<?php echo htmlspecialchars($info['poster']); ?>" onerror="this.src='https://placehold.co/64x88/0f172a/94a3b8?text=CS'" class="w-14 h-20 object-cover rounded-lg border border-slate-800 shadow">
             <div>
                 <p class="font-bold text-slate-100"><?php echo htmlspecialchars($info['title']); ?></p>
                 <p class="text-xs text-slate-400 mt-1"><?php echo htmlspecialchars($info['cinema_name']); ?></p>
@@ -210,7 +217,7 @@ if (!$pending || !$info) {
 
         <!-- Ghế đã chọn -->
         <div class="py-5 border-b border-slate-800">
-            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Ghế đã chọn</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Ghế đã chọn</p>
             <div class="flex flex-wrap gap-2">
                 <?php foreach ($pending['seats'] as $s): ?>
                     <span class="px-3 py-1 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-bold border border-amber-500/30"><?php echo htmlspecialchars($s); ?></span>
@@ -221,11 +228,11 @@ if (!$pending || !$info) {
         <!-- Bắp nước -->
         <?php if (!empty($comboListDetails)): ?>
         <div class="py-5 border-b border-slate-800">
-            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Bắp nước</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Bắp nước</p>
             <?php foreach ($comboListDetails as $c): ?>
                 <div class="flex justify-between text-sm text-slate-300 mb-1">
                     <span><?php echo htmlspecialchars($c['name']); ?> × <?php echo $c['qty']; ?></span>
-                    <span><?php echo money($c['total']); ?></span>
+                    <span class="font-medium"><?php echo money($c['total']); ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -244,16 +251,47 @@ if (!$pending || !$info) {
                 <span class="text-2xl font-extrabold text-rose-500"><?php echo money($grandTotal); ?></span>
             </div>
         </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl mb-4">
+        <div class="text-xs text-slate-300 space-y-1 mb-3">
+            <p class="text-amber-400 font-semibold">⚠️ Quy định xem phim & Hoàn vé:</p>
+            <p>• Phim có phân loại độ tuổi, vui lòng mang theo giấy tờ tùy thân khi đến rạp.</p>
+            <p class="text-rose-400 font-medium">• Vé đã thanh toán thành công <strong>KHÔNG ĐƯỢC HOÀN TIỀN / ĐỔI TRẢ</strong>.</p>
+        </div>
 
-        <form method="POST" class="mt-6 flex gap-3">
-            <a href="booking.php?showtime_id=<?php echo (int)$pending['showtime_id']; ?>" class="flex-1 text-center py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-all">
-                <i class="fa-solid fa-arrow-left mr-1.5"></i>Chọn Lại Ghế
-            </a>
-            <button type="submit" name="confirm" value="1" class="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition-all shadow-lg shadow-rose-600/20">
-                <i class="fa-solid fa-circle-check mr-1.5"></i>Xác Nhận Thanh Toán
-            </button>
-        </form>
+       <!-- KHỐI ĐIỀU KHOẢN VÀ XÁC NHẬN BẮT BUỘC -->
+<div class="bg-slate-900 border border-slate-800 p-4 rounded-xl mb-4 text-left">
+    <div class="text-xs text-slate-300 space-y-1.5 mb-3 leading-relaxed">
+        <p class="text-amber-400 font-bold uppercase tracking-wide">⚠️ Điều khoản xem phim & Hoàn vé:</p>
+        <p>• Phim có quy định phân loại độ tuổi, vui lòng mang theo giấy tờ tùy thân để xác minh khi nhận vé tại rạp.</p>
+        <p class="text-rose-400 font-semibold">• Vé đã thanh toán thành công <strong>KHÔNG ĐƯỢC HOÀN TIỀN HOẶC ĐỔI TRẢ</strong> dưới mọi hình thức.</p>
     </div>
+
+    <!-- Ô TÍCH BẮT BUỘC -->
+    <label class="flex items-center gap-3 cursor-pointer select-none border-t border-slate-800/80 pt-3">
+        <input type="checkbox" id="chkAgreeRules" onchange="toggleBookingButton()" class="w-4 h-4 accent-rose-600 rounded cursor-pointer">
+        <span class="text-xs text-slate-200 font-medium">Tôi đã đọc, hiểu rõ và đồng ý tuân thủ các quy định trên.</span>
+    </label>
 </div>
+
+<!-- NÚT THANH TOÁN (MẶC ĐỊNH BỊ KHÓA) -->
+<button type="submit" id="btnSubmitPayment" disabled class="w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed">
+    Thanh Toán Ngay
+</button>
+
+<!-- SCRIPT KÍCH HOẠT NÚT BẤM -->
+<script>
+function toggleBookingButton() {
+    const chk = document.getElementById('chkAgreeRules');
+    const btn = document.getElementById('btnSubmitPayment');
+    
+    if (chk.checked) {
+        btn.disabled = false;
+        btn.className = "w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-none";
+    } else {
+        btn.disabled = true;
+        btn.className = "w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed";
+    }
+}
+</script>
 
 <?php include_once 'footer.php'; ?>
