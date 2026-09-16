@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // Đoạn code cũ của bạn tiếp tục từ đây...
-require_once 'config/db.php'; 
+require_once '../config/db.php'; 
 include_once 'header.php';
 
 // 1. LẤY DANH SÁCH THỂ LOẠI

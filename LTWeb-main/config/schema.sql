@@ -63,8 +63,9 @@ CREATE TABLE IF NOT EXISTS `bookings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- DỮ LIỆU MẪU BAN ĐẦU
+-- DỮ LIỆU MẪU BAN ĐẦU (Mật khẩu: 123456)
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`) VALUES
-(1, 'Admin CineStar', 'admin@gmail.com', '$2y$10$4vC8IuM3q.4w/x/4w9j4uO.yKkG.5lH8xJ1qP8kS2G8.9lH8xJ1qP', 'admin');
+(1, 'Admin CineStar', 'admin@gmail.com', '$2y$10$4.T9LhZ0Yh4N50vU6Xl.CeM1WvWJ.mD6Wv/7aJbB/bF7bU.K7Mhfe', 'admin');
 
 INSERT INTO `movies` (`id`, `title`, `director`, `cast`, `genre`, `duration`, `release_date`, `poster`, `description`, `status`) VALUES
 (1, 'LẬT MẶT 7: MỘT ĐIỀU ƯỚC', 'Lý Hải', 'Thanh Hiền, Trương Minh Cường', 'Gia đình, Tâm lý', 138, '2024-04-26', 'lat-mat-7.jpg', 'Phim về tình mẫu tử cảm động.', 'now_showing'),

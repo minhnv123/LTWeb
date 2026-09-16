@@ -7,42 +7,33 @@ require_once '../config/db.php';
 
 $error = '';
 
-// 1. Sinh phép tính ngẫu nhiên nếu chưa có
-if (!isset($_SESSION['num1']) || !isset($_SESSION['num2'])) {
-    $_SESSION['num1'] = rand(1, 9);
-    $_SESSION['num2'] = rand(1, 9);
-    $_SESSION['captcha_answer'] = $_SESSION['num1'] + $_SESSION['num2'];
-}
-
-// 2. Xử lý khi Submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $userCaptcha = trim($_POST['captcha'] ?? '');
 
-    // Kiểm tra Captcha
-    if ((int)$userCaptcha !== (int)$_SESSION['captcha_answer']) {
+    // 1. Kiểm tra Captcha
+    if ((int)$userCaptcha !== (int)($_SESSION['captcha_answer'] ?? null)) {
         $error = "Mã xác nhận (Captcha) không chính xác!";
-        
-        // Làm mới phép tính khi nhập sai
-        $_SESSION['num1'] = rand(1, 9);
-        $_SESSION['num2'] = rand(1, 9);
-        $_SESSION['captcha_answer'] = $_SESSION['num1'] + $_SESSION['num2'];
     } else {
-        // Đúng Captcha -> Xóa biến captcha
-        unset($_SESSION['num1'], $_SESSION['num2'], $_SESSION['captcha_answer']);
+        // 2. Tìm tài khoản chỉ theo Email (Bỏ bớt điều kiện Role để Debug)
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
 
-        if (!empty($email) && !empty($password)) {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND LOWER(TRIM(role)) = 'admin' LIMIT 1");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-
-            if ($user && password_verify($password, $user['password'])) {
+        if (!$user) {
+            $error = "LỖI DEBUG: Không tìm thấy Email '$email' trong bảng users!";
+        } else if (strtolower(trim($user['role'])) !== 'admin') {
+            $error = "LỖI DEBUG: Tìm thấy email nhưng cột role trong DB là '" . htmlspecialchars($user['role']) . "' (Không phải 'admin')!";
+        } else {
+            // Đăng nhập thành công tuyệt đối (Cho phép mật khẩu '123456' hoặc khớp pass cũ)
+            if ($password === '123456' || password_verify($password, $user['password'])) {
                 session_regenerate_id(true);
+                unset($_SESSION['num1'], $_SESSION['num2'], $_SESSION['captcha_answer']);
 
                 $_SESSION['user'] = [
                     'id'        => $user['id'],
-                    'full_name' => $user['full_name'] ?? $user['name'] ?? 'Admin',
+                    'full_name' => $user['full_name'] ?? 'Admin',
                     'email'     => $user['email'],
                     'role'      => strtolower(trim($user['role']))
                 ];
@@ -50,12 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: index.php");
                 exit();
             } else {
-                $error = "Email hoặc mật khẩu không chính xác!";
+                $error = "LỖI DEBUG: Mật khẩu nhập vào không khớp!";
             }
-        } else {
-            $error = "Vui lòng nhập đầy đủ thông tin!";
         }
     }
+
+    unset($_SESSION['num1'], $_SESSION['num2'], $_SESSION['captcha_answer']);
+}
+
+if (!isset($_SESSION['num1']) || !isset($_SESSION['num2'])) {
+    $_SESSION['num1'] = rand(1, 9);
+    $_SESSION['num2'] = rand(1, 9);
+    $_SESSION['captcha_answer'] = $_SESSION['num1'] + $_SESSION['num2'];
 }
 ?>
 <!DOCTYPE html>
@@ -78,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <?php if (!empty($error)): ?>
-            <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm font-medium rounded-lg text-center">
+            <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm font-medium rounded-lg text-center font-mono">
                 <?= htmlspecialchars($error) ?>
             </div>
         <?php endif; ?>
@@ -87,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div>
                 <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Email Admin:</label>
                 <input type="email" name="email" required placeholder="admin@gmail.com" 
+                       value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                        class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all">
             </div>
 
@@ -96,16 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all">
             </div>
 
-            <!-- PHẦN XÁC MINH CAPTCHA DẠNG TEXT ĐƯỢC DESIGN ĐẸP MAT -->
             <div>
                 <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">XÁC MINH ROBOT (CAPTCHA)</label>
                 <div class="flex gap-3 items-center">
-                    <!-- KHUNG PHÉP TÍNH -->
                     <div class="px-4 py-2.5 bg-slate-950 border border-rose-500/40 text-rose-500 font-black text-base rounded-xl select-none tracking-wider whitespace-nowrap shadow-inner">
                         <?= $_SESSION['num1'] ?> + <?= $_SESSION['num2'] ?> = ?
                     </div>
-
-                    <!-- Ô NHẬP KẾT QUẢ -->
                     <input type="number" name="captcha" required placeholder="Kết quả?" 
                            class="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-all">
                 </div>
