@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Bảng Phim (CỦA BẠN)
+-- 2. Bảng Phim
 CREATE TABLE IF NOT EXISTS `movies` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
@@ -67,16 +67,16 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`) VALUES
 (1, 'Admin CineStar', 'admin@gmail.com', '$2y$10$4vC8IuM3q.4w/x/4w9j4uO.yKkG.5lH8xJ1qP8kS2G8.9lH8xJ1qP', 'admin');
 
 INSERT INTO `movies` (`id`, `title`, `director`, `cast`, `genre`, `duration`, `release_date`, `poster`, `description`, `status`) VALUES
-(1, 'LẬT MẶT 7: MỘT ĐIỀU ƯỚC', 'Lý Hải', 'Thanh Hiền, Trương Minh Cường', 'Gia đình, Tâm lý', 138, '2026-04-26', 'lat-mat-7.jpg', 'Phim về tình mẫu tử cảm động.', 'now_showing'),
-(2, 'DEADPOOL & WOLVERINE', 'Shawn Levy', 'Ryan Reynolds, Hugh Jackman', 'Hành động, Viễn tưởng', 128, '2026-07-26', 'deadpool.jpg', 'Phim hành động siêu hài của Marvel.', 'coming_soon');
-(3,  'NHÀ BÀ NỮ', 'Trấn Thành', 'Trấn Thành, Lê Giang, Ngân Chi', 'Tâm lý, Hài', 116, '2023-01-22', 'nha-ba-nu.jpg', 'Bi hài kịch gia đình xoay quanh ba thế hệ phụ nữ sống chung một mái nhà.', 'now_showing'),
-(4,  'BỐ GIÀ', 'Trấn Thành, Vũ Ngọc Đãng', 'Trấn Thành, Tuấn Trần', 'Tâm lý, Gia đình', 128, '2021-03-05', 'bo-gia.jpg', 'Câu chuyện gia đình xúc động giữa người cha nghèo và cậu con trai nhiều hoài bão.', 'now_showing'),
-(5,  'ĐÀO, PHỞ VÀ PIANO', 'Phi Tiến Sơn', 'Doãn Quốc Đam, Cao Thị Thùy Linh', 'Lịch sử, Chiến tranh', 100, '2024-02-10', 'dao-pho-piano.jpg', 'Câu chuyện tình yêu giữa khói lửa Hà Nội mùa đông năm 1946.', 'now_showing'),
-(6,  'EXHUMA: QUẬT MỘ TRÙNG MA', 'Jang Jae-hyun', 'Choi Min-sik, Kim Go-eun', 'Kinh dị, Bí ẩn', 134, '2024-02-22', 'exhuma.jpg', 'Một pháp sư và thầy phong thủy khai quật ngôi mộ cổ chứa lời nguyền bí ẩn.', 'now_showing'),
-(7,  'GODZILLA X KONG: ĐẾ CHẾ MỚI', 'Adam Wingard', 'Rebecca Hall, Dan Stevens', 'Hành động, Viễn tưởng', 115, '2024-03-29', 'godzilla-kong.jpg', 'Hai quái vật huyền thoại buộc phải liên minh để đối đầu mối đe dọa khổng lồ.', 'now_showing'),
-(8,  'KUNG FU PANDA 4', 'Mike Mitchell', 'Jack Black (lồng tiếng), Awkwafina (lồng tiếng)', 'Hoạt hình, Gia đình', 94, '2024-03-08', 'kungfu-panda-4.jpg', 'Po phải tìm người kế nhiệm để trở thành Long Chiến Thần tiếp theo.', 'now_showing'),
-(9,  'INSIDE OUT 2', 'Kelsey Mann', 'Amy Poehler (lồng tiếng), Maya Hawke (lồng tiếng)', 'Hoạt hình, Gia đình', 96, '2024-06-14', 'inside-out-2.jpg', 'Riley bước vào tuổi dậy thì với sự xuất hiện của những cảm xúc mới.', 'coming_soon'),
-(10, 'DEADPOOL & WOLVERINE', 'Shawn Levy', 'Ryan Reynolds, Hugh Jackman', 'Hành động, Hài', 128, '2024-07-26', 'deadpool.jpg', 'Deadpool bắt tay cùng Wolverine trong hành trình đa vũ trụ đầy hài hước.', 'coming_soon'),
+(1, 'LẬT MẶT 7: MỘT ĐIỀU ƯỚC', 'Lý Hải', 'Thanh Hiền, Trương Minh Cường', 'Gia đình, Tâm lý', 138, '2024-04-26', 'lat-mat-7.jpg', 'Phim về tình mẫu tử cảm động.', 'now_showing'),
+(2, 'DEADPOOL & WOLVERINE', 'Shawn Levy', 'Ryan Reynolds, Hugh Jackman', 'Hành động, Viễn tưởng', 128, '2024-07-26', 'deadpool.jpg', 'Phim hành động siêu hài của Marvel.', 'coming_soon'),
+(3, 'NHÀ BÀ NỮ', 'Trấn Thành', 'Trấn Thành, Lê Giang, Ngân Chi', 'Tâm lý, Hài', 116, '2023-01-22', 'nha-ba-nu.jpg', 'Bi hài kịch gia đình xoay quanh ba thế hệ phụ nữ sống chung một mái nhà.', 'now_showing'),
+(4, 'BỐ GIÀ', 'Trấn Thành, Vũ Ngọc Đãng', 'Trấn Thành, Tuấn Trần', 'Tâm lý, Gia đình', 128, '2021-03-05', 'bo-gia.jpg', 'Câu chuyện gia đình xúc động giữa người cha nghèo và cậu con trai nhiều hoài bão.', 'now_showing'),
+(5, 'ĐÀO, PHỞ VÀ PIANO', 'Phi Tiến Sơn', 'Doãn Quốc Đam, Cao Thị Thùy Linh', 'Lịch sử, Chiến tranh', 100, '2024-02-10', 'dao-pho-piano.jpg', 'Câu chuyện tình yêu giữa khói lửa Hà Nội mùa đông năm 1946.', 'now_showing'),
+(6, 'EXHUMA: QUẬT MỘ TRÙNG MA', 'Jang Jae-hyun', 'Choi Min-sik, Kim Go-eun', 'Kinh dị, Bí ẩn', 134, '2024-02-22', 'exhuma.jpg', 'Một pháp sư và thầy phong thủy khai quật ngôi mộ cổ chứa lời nguyền bí ẩn.', 'now_showing'),
+(7, 'GODZILLA X KONG: ĐẾ CHẾ MỚI', 'Adam Wingard', 'Rebecca Hall, Dan Stevens', 'Hành động, Viễn tưởng', 115, '2024-03-29', 'godzilla-kong.jpg', 'Hai quái vật huyền thoại buộc phải liên minh để đối đầu mối đe dọa khổng lồ.', 'now_showing'),
+(8, 'KUNG FU PANDA 4', 'Mike Mitchell', 'Jack Black (lồng tiếng), Awkwafina (lồng tiếng)', 'Hoạt hình, Gia đình', 94, '2024-03-08', 'kungfu-panda-4.jpg', 'Po phải tìm người kế nhiệm để trở thành Long Chiến Thần tiếp theo.', 'now_showing'),
+(9, 'INSIDE OUT 2', 'Kelsey Mann', 'Amy Poehler (lồng tiếng), Maya Hawke (lồng tiếng)', 'Hoạt hình, Gia đình', 96, '2024-06-14', 'inside-out-2.jpg', 'Riley bước vào tuổi dậy thì với sự xuất hiện của những cảm xúc mới.', 'coming_soon'),
+(10, 'DESPICABLE ME 4', 'Patrick Delage, Chris Renaud', 'Steve Carell, Kristen Wiig', 'Hoạt hình, Hài', 94, '2024-07-03', 'despicable-me-4.jpg', 'Gru và gia đình đối mặt với kẻ thù mới đầy nguy hiểm.', 'coming_soon'),
 (11, 'KẺ ĂN HỒN', 'Trần Hữu Tấn', 'Lâm Thanh Mỹ, Nguyên Thảo', 'Kinh dị, Tâm linh', 105, '2023-07-14', 'ke-an-hon.jpg', 'Bí ẩn rùng rợn bao trùm một ngôi làng sau đám cưới đầy điềm gở.', 'now_showing'),
 (12, 'MÓNG VUỐT', 'Lê Thanh Sơn', 'Thái Hòa, Karen Nguyễn', 'Hành động, Kinh dị', 100, '2024-04-19', 'mong-vuot.jpg', 'Nhóm phượt thủ mắc kẹt giữa rừng sâu và bị một sinh vật bí ẩn săn đuổi.', 'now_showing'),
 (13, 'CÁI GIÁ CỦA HẠNH PHÚC', 'Luk Vân', 'Thanh Thúy, Kiều Minh Tuấn', 'Tâm lý', 108, '2024-04-30', 'cai-gia-cua-hanh-phuc.jpg', 'Những góc khuất trong hôn nhân được phơi bày qua lăng kính đầy chân thực.', 'now_showing'),
@@ -88,30 +88,31 @@ INSERT INTO `movies` (`id`, `title`, `director`, `cast`, `genre`, `duration`, `r
 (19, 'NGƯỜI VỢ CUỐI CÙNG', 'Victor Vũ', 'Kaity Nguyễn, Quang Thắng', 'Tâm lý, Cổ trang', 130, '2023-11-03', 'nguoi-vo-cuoi-cung.jpg', 'Bi kịch tình yêu của người vợ ba trong một gia đình quan lại thời phong kiến.', 'now_showing'),
 (20, 'FURIOSA: MỘT SỬ THI MAD MAX', 'George Miller', 'Anya Taylor-Joy, Chris Hemsworth', 'Hành động, Viễn tưởng', 148, '2024-05-24', 'furiosa.jpg', 'Nguồn gốc của Furiosa trước khi trở thành chiến binh huyền thoại trong thế giới hậu tận thế.', 'coming_soon');
 
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=d1ZHdosjNX8' WHERE id = 1;  -- LẬT MẶT 7: MỘT ĐIỀU ƯỚC
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=Xithigfg7dA' WHERE id = 2;  -- DEADPOOL
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=IkaP0KJWTsQ' WHERE id = 3;  -- NHÀ BÀ NỮ
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=jluSu8Rw6YE&pp=ygURYuG7kSBnacOgIHRyYWlsZXI%3D' WHERE id = 4;  -- BỐ GIÀ
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=qn1t_biQigc&pp=ygUdxJHDoG8gcGjhu58gdsOgIHBpYW5vIHRyYWlsZXI%3D' WHERE id = 5;  -- ĐÀO, PHỞ VÀ PIANO
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=66K9-l0EkE0' WHERE id = 6;  -- EXHUMA: QUẬT MỘ TRÙNG MA
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=5XkgG_AAQs0&pp=ygUpZ29kemlsbGEgeCBrb25nIMSR4bq_IGNo4bq_IG3hu5tpIHRyYWlsZXLSBwkJJAwBhyohjO8%3D' WHERE id = 7;  -- GODZILLA X KONG: ĐẾ CHẾ MỚI
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=_inKs4eeHiI&pp=ygUXa3VuZyBmdSBwYW5kYSA0IHRyYWlsZXI%3D' WHERE id = 8;  -- KUNG FU PANDA 4
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=LEjhY15eCx0&pp=ygUUaW5zaWRlIG91dCAyIHRyYWlsZXI%3D' WHERE id = 9;  -- INSIDE OUT 2
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 10; -- DEADPOOL & WOLVERINE
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=xWh0g4rKGjI&pp=ygUWa-G6uyDEg24gaOG7k24gdHJhaWxlcg%3D%3D' WHERE id = 11; -- KẺ ĂN HỒN
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 12; -- MÓNG VUỐT
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=79BznZKQwIQ&pp=ygUkY8OhaSBnacOhIGPhu6dhIGjhuqFuaCBwaMO6YyB0cmFpbGVy' WHERE id = 13; -- CÁI GIÁ CỦA HẠNH PHÚC
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 14; -- DUNE: HÀNH TINH CÁT 2
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 15; -- WONKA
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 16; -- AQUAMAN VÀ VƯƠNG QUỐC THẤT LẠC
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 17; -- CHỊ CHỊ EM EM 2
-UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=hktzirCnJmQ&pp=ygUixJHhuqV0IHLhu6tuZyBwaMawxqFuZyBuYW0gdHJhaWxlcg%3D%3D' WHERE id = 18; -- ĐẤT RỪNG PHƯƠNG NAM
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 19; -- NGƯỜI VỢ CUỐI CÙNG
-UPDATE movies SET trailer_url = 'DÁN_LINK_YOUTUBE_VÀO_ĐÂY' WHERE id = 20; -- FURIOSA: MỘT SỬ THI MAD MAX
+-- Cập nhật Trailer URL
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=d1ZHdosjNX8' WHERE id = 1;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=73_1biulkYk' WHERE id = 2;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=IkaP0KJWTsQ' WHERE id = 3;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=jluSu8Rw6YE' WHERE id = 4;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=qn1t_biQigc' WHERE id = 5;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=66K9-l0EkE0' WHERE id = 6;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=qqrpMRDuPfc' WHERE id = 7;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=_inKs4eeHiI' WHERE id = 8;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=LEjhY15eCx0' WHERE id = 9;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=qQlr9-rF32E' WHERE id = 10;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=xWh0g4rKGjI' WHERE id = 11;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=5XkgG_AAQs0' WHERE id = 12;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=79BznZKQwIQ' WHERE id = 13;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=Way9Dexny3w' WHERE id = 14;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=otNh9bTjXWg' WHERE id = 15;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=UGc5TzxSCpI' WHERE id = 16;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=9g2s-W8ZfE4' WHERE id = 17;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=hktzirCnJmQ' WHERE id = 18;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=t-0ZlVb0S1Y' WHERE id = 19;
+UPDATE movies SET trailer_url = 'https://www.youtube.com/watch?v=XJMuhwVlca4' WHERE id = 20;
 
 INSERT INTO `cinemas` (`id`, `name`, `address`) VALUES
 (1, 'CineStar Quốc Thanh', '271 Nguyễn Trãi, Q.1, TP.HCM'),
-(2, 'CineStar Hai Bà Trưng', '135 Hai Bà Trưng, Q.3, TP.HCM');
+(2, 'CineStar Hai Bà Trưng', '135 Hai Bà Trưng, Q.3, TP.HCM'),
 (3, 'CGV Vincom Đồng Khởi', '72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, TP.HCM'),
 (4, 'CGV Aeon Mall Tân Phú', '30 Bờ Bao Tân Thắng, Phường Sơn Kỳ, Quận Tân Phú, TP.HCM'),
 (5, 'Lotte Cinema Landmark 81', 'Vinhomes Central Park, 720A Điện Biên Phủ, Phường 22, Quận Bình Thạnh, TP.HCM'),

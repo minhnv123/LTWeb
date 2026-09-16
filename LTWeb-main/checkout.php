@@ -273,10 +273,13 @@ if (!$pending || !$info) {
     </label>
 </div>
 
-<!-- NÚT THANH TOÁN (MẶC ĐỊNH BỊ KHÓA) -->
-<button type="submit" id="btnSubmitPayment" disabled class="w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed">
-    Thanh Toán Ngay
-</button>
+<!-- FORM GỬI LỆNH XÁC NHẬN THANH TOÁN -->
+<form action="checkout.php" method="POST">
+    <button type="submit" name="confirm" value="1" id="btnSubmitPayment" disabled 
+            class="w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed">
+        Thanh Toán Ngay
+    </button>
+</form>
 
 <!-- SCRIPT KÍCH HOẠT NÚT BẤM -->
 <script>
@@ -284,14 +287,14 @@ function toggleBookingButton() {
     const chk = document.getElementById('chkAgreeRules');
     const btn = document.getElementById('btnSubmitPayment');
     
-    if (chk.checked) {
-        btn.disabled = false;
-        btn.className = "w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-none";
-    } else {
-        btn.disabled = true;
-        btn.className = "w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed";
+    if (chk && btn) {
+        if (chk.checked) {
+            btn.disabled = false;
+            btn.className = "w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-rose-600/30";
+        } else {
+            btn.disabled = true;
+            btn.className = "w-full py-3.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-sm transition-all cursor-not-allowed";
+        }
     }
 }
 </script>
-
-<?php include_once 'footer.php'; ?>
