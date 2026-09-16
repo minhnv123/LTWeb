@@ -15,7 +15,7 @@ $hasPendingBooking = isset($_SESSION['pending_booking']);
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Google Plus Jakarta Sans (Thay đổi font chữ mới) -->
+    <!-- Font Google Plus Jakarta Sans -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
@@ -91,14 +91,7 @@ $hasPendingBooking = isset($_SESSION['pending_booking']);
                 <!-- Tài Khoản (Đăng Nhập / Profile & Đăng Xuất) -->
                 <?php if (isset($_SESSION['user'])): ?>
                     <div class="flex items-center gap-2">
-                        <!-- Nút Trang Admin (Chỉ hiện khi tài khoản có role admin) -->
-                        <?php if (isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'admin'): ?>
-                            <a href="admin/index.php" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950 transition-all" title="Trang Quản Trị">
-                                <span>Admin</span>
-                            </a>
-                        <?php endif; ?>
-
-                        <!-- Nút Profile -->
+                        <!-- Nút Profile (Đã loại bỏ hoàn toàn nút Admin) -->
                         <a href="profile.php" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-all" title="Thông tin cá nhân">
                             <span><?php echo htmlspecialchars($_SESSION['user']['full_name'] ?? $_SESSION['user']['name'] ?? $_SESSION['user']['username'] ?? 'Tài khoản'); ?></span>
                         </a>
