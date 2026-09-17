@@ -9,9 +9,7 @@
             </div>
 
             <div class="flex items-center gap-4 text-slate-400 font-semibold">
-                <a href="#" class="hover:text-rose-500 transition-colors">Bảo Mật</a>
-                <span class="text-slate-800">•</span>
-                <a href="#" class="hover:text-rose-500 transition-colors">Điều Khoản</a>
+                <a href="privacy.php" class="text-slate-400 hover:text-rose-500 transition-colors">Điều Khoản Bảo Mật</a>
                 <span class="text-slate-800">•</span>
                 <span class="text-slate-300">Liên Hệ Hotline: <strong class="text-rose-500">1900 6017</strong></span>
             </div>
