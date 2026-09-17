@@ -11,7 +11,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 
 // Đổi đường dẫn file kết nối DB chuẩn trong project
 require_once '../config/db.php';
-
+include_once 'header.php';
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

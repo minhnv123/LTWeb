@@ -11,6 +11,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 
 // Kết nối CSDL chuẩn
 require_once '../config/db.php';
+include_once 'header.php';
 
 // 2. Xử lý Xóa Phim (CRUD Delete)
 if (isset($_GET['delete_id'])) {
@@ -47,6 +48,8 @@ $movies = $stmt->fetchAll();
     <title>Quản Lý Danh Sách Phim</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Thêm thư viện SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen py-8 px-4 md:px-8">
 
@@ -106,7 +109,6 @@ $movies = $stmt->fetchAll();
                                         <?= htmlspecialchars($row['genre'] ?? 'N/A') ?>
                                     </span>
                                 </td>
-                                <!-- Hiển thị Badge Trạng Thái -->
                                 <td class="py-3 px-5">
                                     <?php if (($row['status'] ?? 'now_showing') === 'coming_soon'): ?>
                                         <span class="px-2.5 py-1 text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full inline-flex items-center gap-1">
@@ -127,7 +129,8 @@ $movies = $stmt->fetchAll();
                                         <a href="movie_edit.php?id=<?= $row['id'] ?>" class="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white rounded-lg transition-all text-xs" title="Sửa">
                                             <i class="fa-solid fa-pen"></i>
                                         </a>
-                                        <a href="movies_list.php?delete_id=<?= $row['id'] ?>" class="p-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all text-xs" onclick="return confirm('Bạn có chắc muốn xóa phim này?')" title="Xóa">
+                                        <!-- Nút xóa dùng SweetAlert2 -->
+                                        <a href="javascript:void(0)" onclick="confirmDelete(<?= $row['id'] ?>)" class="p-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all text-xs" title="Xóa">
                                             <i class="fa-solid fa-trash"></i>
                                         </a>
                                     </div>
@@ -147,5 +150,28 @@ $movies = $stmt->fetchAll();
         </div>
     </div>
 
+    <!-- Script xử lý Popup -->
+    <script>
+    function confirmDelete(id) {
+        Swal.fire({
+            title: '',
+            text: 'Bạn có chắc chắn muốn xóa?',
+            icon: 'warning',
+            iconColor: '#f97316',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#3b82f6',
+            confirmButtonText: 'Xác nhận xóa!',
+            cancelButtonText: 'Huỷ',
+            customClass: {
+                popup: 'rounded-2xl shadow-2xl bg-white text-slate-800'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'movies_list.php?delete_id=' + id;
+            }
+        });
+    }
+    </script>
 </body>
 </html>

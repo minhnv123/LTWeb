@@ -2,7 +2,6 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Đoạn code cũ của bạn tiếp tục từ đây...
 require_once '../config/db.php'; 
 include_once 'header.php';
 
@@ -88,7 +87,7 @@ function renderMovieGrid($movies) {
                     <span class="absolute top-2 left-2 z-10 ' . $badgeBg . ' text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                         ' . $rating . '
                     </span>
-                    <img src="uploads/' . $poster . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
+                    <img src="../uploads/' . $poster . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
                          alt="' . $title . '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 </div>
                 <div class="p-3">
@@ -107,7 +106,7 @@ function renderMovieGrid($movies) {
     <?php foreach ($bannerMovies as $i => $movie): ?>
         <div class="banner-slide absolute inset-0 transition-opacity duration-700 <?php echo $i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'; ?>"
              data-index="<?php echo $i; ?>">
-            <img src="uploads/<?php echo htmlspecialchars($movie['poster'] ?? ''); ?>"
+            <img src="../uploads/<?php echo htmlspecialchars($movie['poster'] ?? ''); ?>"
                  onerror="this.src='https://placehold.co/1600x600/0f172a/f8fafc?text=CineStar'"
                  alt="<?php echo htmlspecialchars($movie['title']); ?>"
                  class="w-full h-full object-cover">
