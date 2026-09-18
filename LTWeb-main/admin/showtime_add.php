@@ -9,7 +9,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 }
 
 require_once '../config/db.php';
-
+include_once 'header.php';
 $movies = $pdo->query("SELECT id, title FROM movies ORDER BY title ASC")->fetchAll();
 $cinemas = $pdo->query("SELECT id, name FROM cinemas ORDER BY name ASC")->fetchAll();
 

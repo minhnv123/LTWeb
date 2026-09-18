@@ -9,7 +9,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 }
 
 require_once '../config/db.php';
-
+include_once 'header.php';
 $id = (int)($_GET['id'] ?? 0);
 
 // Lấy thông tin suất chiếu hiện tại

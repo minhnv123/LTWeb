@@ -9,7 +9,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 }
 
 require_once '../config/db.php';
-
+include_once 'header.php';
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

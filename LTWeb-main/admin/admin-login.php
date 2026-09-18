@@ -38,7 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role'      => strtolower(trim($user['role']))
                 ];
 
-header("Location: /movie-ticket/LTWeb-main/admin/index.php");                exit();
+header("Location: index.php");                
+exit();
             } else {
                 $error = "LỖI DEBUG: Mật khẩu nhập vào không khớp!";
             }

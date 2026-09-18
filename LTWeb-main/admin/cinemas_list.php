@@ -10,6 +10,7 @@ if (!isset($_SESSION['user']) || strtolower(trim($_SESSION['user']['role'] ?? ''
 }
 
 require_once '../config/db.php';
+include_once 'header.php';
 
 // 2. Xử lý Xóa Rạp
 $message = '';
@@ -40,9 +41,10 @@ $stmt = $pdo->query("
     ORDER BY c.id DESC
 ");
 $cinemas = $stmt->fetchAll();
-
-include_once 'header.php';
 ?>
+
+<!-- Nhúng thư viện SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <div class="space-y-6">
     <!-- Header & Action -->
@@ -107,7 +109,8 @@ include_once 'header.php';
                                         <a href="cinema_edit.php?id=<?= $c['id'] ?>" class="p-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-xs font-medium transition-all" title="Chỉnh sửa">
                                             <i class="fa-solid fa-pen-to-square"></i> Sửa
                                         </a>
-                                        <a href="cinemas_list.php?delete_id=<?= $c['id'] ?>" onclick="return confirm('Bạn có chắc chắn muốn xóa rạp này?')" class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium transition-all" title="Xóa">
+                                        <!-- Nút Xóa gọi Popup xác nhận -->
+                                        <a href="javascript:void(0)" onclick="confirmDeleteCinema(<?= $c['id'] ?>)" class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium transition-all" title="Xóa">
                                             <i class="fa-solid fa-trash"></i> Xóa
                                         </a>
                                     </div>
@@ -120,5 +123,29 @@ include_once 'header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<!-- Script xử lý Popup Xóa Rạp -->
+<script>
+function confirmDeleteCinema(id) {
+    Swal.fire({
+        title: '',
+        text: 'Bạn có chắc chắn muốn xóa?',
+        icon: 'warning',
+        iconColor: '#f97316',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#3b82f6',
+        confirmButtonText: 'Xác nhận xóa!',
+        cancelButtonText: 'Huỷ',
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl bg-white text-slate-800'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'cinemas_list.php?delete_id=' + id;
+        }
+    });
+}
+</script>
 
 <?php include_once 'footer.php'; ?>
