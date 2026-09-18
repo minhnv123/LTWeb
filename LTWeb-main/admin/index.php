@@ -2,9 +2,94 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Đoạn code cũ của bạn tiếp tục từ đây...
 require_once '../config/db.php'; 
+
+// 1. LẤY THAM SỐ LỌC THEO THỜI GIAN (Mặc định: 'all')
+$filter = $_GET['filter'] ?? 'all';
+$dateCondition = "";
+
+switch ($filter) {
+    case 'today':
+        $dateCondition = " AND DATE(created_at) = CURDATE()";
+        break;
+    case 'this_month':
+        $dateCondition = " AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())";
+        break;
+    default:
+        $dateCondition = ""; // Tất cả thời gian
+        break;
+}
+
+// 2. TRUY VẤN TỔNG DOANH THU THEO BỘ LỌC
+try {
+    // Kiểm tra và thực thi tính tổng doanh thu an toàn
+    $sqlRevenue = "SELECT SUM(total_price) AS total_revenue FROM bookings WHERE (status = 'paid' OR status = 'completed' OR status = '1')" . $dateCondition;
+    $stmtRevenue = $pdo->prepare($sqlRevenue);
+    $stmtRevenue->execute();
+    $resRevenue = $stmtRevenue->fetch(PDO::FETCH_ASSOC);
+    $totalRevenue = $resRevenue['total_revenue'] ?? 0;
+} catch (PDOException $e) {
+    // Trường hợp dự án không phân biệt trạng thái đơn hàng
+    try {
+        $sqlRevenueFallback = "SELECT SUM(total_price) AS total_revenue FROM bookings WHERE 1=1" . $dateCondition;
+        $stmtRevenueFallback = $pdo->prepare($sqlRevenueFallback);
+        $stmtRevenueFallback->execute();
+        $resRevenueFallback = $stmtRevenueFallback->fetch(PDO::FETCH_ASSOC);
+        $totalRevenue = $resRevenueFallback['total_revenue'] ?? 0;
+    } catch (PDOException $ex) {
+        $totalRevenue = 0;
+    }
+}
+
+// 3. TRUY VẤN THỐNG KÊ DOANH THU THEO PHIM (DÙNG CHO BIỂU ĐỒ CHART.JS)
+$movieLabels = [];
+$movieData = [];
+
+try {
+    $sqlChart = "SELECT m.title, SUM(b.total_price) AS revenue
+                 FROM bookings b
+                 JOIN showtimes s ON b.showtime_id = s.id
+                 JOIN movies m ON s.movie_id = m.id
+                 WHERE (b.status = 'paid' OR b.status = 'completed' OR b.status = '1')
+                 GROUP BY m.id, m.title
+                 ORDER BY revenue DESC
+                 LIMIT 5"; // Top 5 phim doanh thu cao nhất
+                 
+    $stmtChart = $pdo->prepare($sqlChart);
+    $stmtChart->execute();
+    $chartResults = $stmtChart->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($chartResults as $row) {
+        $movieLabels[] = $row['title'];
+        $movieData[] = (float)$row['revenue'];
+    }
+} catch (PDOException $e) {
+    // Nếu chưa có dữ liệu giao dịch thành công
+    $movieLabels = [];
+    $movieData = [];
+}
+
 include_once 'header.php';
+
+// Hàm xử lý đường dẫn ảnh poster chuẩn cho trang Admin
+function getAdminPosterUrl($poster) {
+    $poster = trim($poster ?? '');
+    if (empty($poster)) {
+        return 'https://placehold.co/800x1200/0f172a/f8fafc?text=No+Image';
+    }
+    // Nếu là URL online (http/https)
+    if (filter_var($poster, FILTER_VALIDATE_URL)) {
+        return $poster;
+    }
+    // Lùi về thư mục gốc để tìm trong uploads hoặc assets
+    if (file_exists(__DIR__ . '/../uploads/' . $poster)) {
+        return '../uploads/' . $poster;
+    } elseif (file_exists(__DIR__ . '/../assets/images/' . $poster)) {
+        return '../assets/images/' . $poster;
+    }
+    
+    return '../uploads/' . $poster;
+}
 
 // 1. LẤY DANH SÁCH THỂ LOẠI
 $genreStmt = $pdo->query("SELECT DISTINCT genre FROM movies WHERE genre IS NOT NULL AND genre != ''");
@@ -71,11 +156,11 @@ function renderMovieGrid($movies) {
     }
     echo '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">';
     foreach ($movies as $movie) {
-        $poster   = htmlspecialchars($movie['poster'] ?? '');
-        $title    = htmlspecialchars($movie['title'] ?? '');
-        $genre    = htmlspecialchars($movie['genre'] ?? '');
-        $rating   = htmlspecialchars($movie['rating'] ?? 'P');
-        $id       = (int)$movie['id'];
+        $posterUrl = getAdminPosterUrl($movie['poster'] ?? '');
+        $title     = htmlspecialchars($movie['title'] ?? '');
+        $genre     = htmlspecialchars($movie['genre'] ?? '');
+        $rating    = htmlspecialchars($movie['rating'] ?? 'P');
+        $id        = (int)$movie['id'];
 
         $badgeBg = 'bg-green-600';
         if ($rating === 'K')   $badgeBg = 'bg-blue-600';
@@ -88,7 +173,7 @@ function renderMovieGrid($movies) {
                     <span class="absolute top-2 left-2 z-10 ' . $badgeBg . ' text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                         ' . $rating . '
                     </span>
-                    <img src="uploads/' . $poster . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
+                    <img src="' . $posterUrl . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
                          alt="' . $title . '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 </div>
                 <div class="p-3">
@@ -101,13 +186,89 @@ function renderMovieGrid($movies) {
 }
 ?>
 
+<!-- NHÚNG THƯ VIỆN CHART.JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+
+    <!-- KHỐI HEADER BẢNG ĐIỀU KHIỂN & BỘ LỌC THỜI GIAN -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-extrabold text-white">Bảng Điều Khiển Quản Trị</h1>
+            <p class="text-slate-400 text-sm mt-1">Báo cáo doanh thu và chỉ số hoạt động hệ thống CineStar</p>
+        </div>
+
+        <!-- Form lọc doanh thu theo thời gian -->
+        <form method="GET" action="index.php" class="flex items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+            <?php if ($filterGenre !== ''): ?>
+                <input type="hidden" name="genre" value="<?php echo htmlspecialchars($filterGenre); ?>">
+            <?php endif; ?>
+            <?php if ($searchTerm !== ''): ?>
+                <input type="hidden" name="search" value="<?php echo htmlspecialchars($searchTerm); ?>">
+            <?php endif; ?>
+            <label for="filter" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Thời gian:</label>
+            <select name="filter" id="filter" onchange="this.form.submit()" 
+                    class="bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-rose-500">
+                <option value="all" <?= $filter == 'all' ? 'selected' : '' ?>>Tất cả thời gian</option>
+                <option value="today" <?= $filter == 'today' ? 'selected' : '' ?>>Hôm nay</option>
+                <option value="this_month" <?= $filter == 'this_month' ? 'selected' : '' ?>>Tháng này</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- KHỐI CARD THỐNG KÊ DOANH THU -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+            <div class="flex items-center justify-between z-10 relative">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Doanh Thu 
+                        <?php 
+                            if ($filter == 'today') echo '(Hôm nay)';
+                            elseif ($filter == 'this_month') echo '(Tháng này)';
+                            else echo '(Tất cả)';
+                        ?>
+                    </p>
+                    <h3 class="text-2xl font-black text-emerald-400 mt-2">
+                        <?= number_format($totalRevenue, 0, ',', '.') ?> VNĐ
+                    </h3>
+                </div>
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4 text-xs text-slate-400 flex items-center gap-1">
+                <span class="text-emerald-400 font-semibold">↑ Cập nhật tự động</span> từ các giao dịch thành công
+            </div>
+        </div>
+    </div>
+
+    <!-- KHỐI BIỂU ĐỒ DOANH THU TOP PHIM (CHART.JS) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg mb-12">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                Top 5 Phim Có Doanh Thu Cao Nhất
+            </h2>
+            <span class="text-xs text-slate-500">Đơn vị: VNĐ</span>
+        </div>
+        <div class="relative h-64 sm:h-72 w-full">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
 <!-- BANNER SLIDER -->
 <?php if (!empty($bannerMovies)): ?>
 <section class="relative w-full h-[300px] sm:h-[420px] lg:h-[520px] overflow-hidden bg-slate-900" id="bannerSlider">
     <?php foreach ($bannerMovies as $i => $movie): ?>
+        <?php $bannerPoster = getAdminPosterUrl($movie['poster'] ?? ''); ?>
         <div class="banner-slide absolute inset-0 transition-opacity duration-700 <?php echo $i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'; ?>"
              data-index="<?php echo $i; ?>">
-            <img src="uploads/<?php echo htmlspecialchars($movie['poster'] ?? ''); ?>"
+            <img src="<?php echo $bannerPoster; ?>"
                  onerror="this.src='https://placehold.co/1600x600/0f172a/f8fafc?text=CineStar'"
                  alt="<?php echo htmlspecialchars($movie['title']); ?>"
                  class="w-full h-full object-cover">
@@ -197,6 +358,57 @@ function renderMovieGrid($movies) {
 
 </div>
 
+<!-- SCRIPT BIỂU ĐỒ CHART.JS -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('revenueChart');
+    if (!ctx) return;
+
+    const movieLabels = <?= json_encode($movieLabels) ?>;
+    const movieData = <?= json_encode($movieData) ?>;
+
+    new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: movieLabels.length > 0 ? movieLabels : ['Chưa có doanh thu'],
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: movieData.length > 0 ? movieData : [0],
+                backgroundColor: 'rgba(244, 63, 94, 0.8)', // Tông màu Rose chuẩn CineStar
+                borderColor: 'rgba(244, 63, 94, 1)',
+                borderWidth: 1,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#94A3B8', font: { family: 'sans-serif', size: 12 } }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94A3B8' },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                },
+                y: {
+                    ticks: {
+                        color: '#94A3B8',
+                        callback: function(val) {
+                            return val.toLocaleString('vi-VN') + ' đ';
+                        }
+                    },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<!-- SCRIPT BANNER SLIDER -->
 <script>
 (function () {
     const slides = document.querySelectorAll('.banner-slide');
