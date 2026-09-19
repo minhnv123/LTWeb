@@ -22,14 +22,12 @@ switch ($filter) {
 
 // 2. TRUY VẤN TỔNG DOANH THU THEO BỘ LỌC
 try {
-    // Kiểm tra và thực thi tính tổng doanh thu an toàn
     $sqlRevenue = "SELECT SUM(total_price) AS total_revenue FROM bookings WHERE (status = 'paid' OR status = 'completed' OR status = '1')" . $dateCondition;
     $stmtRevenue = $pdo->prepare($sqlRevenue);
     $stmtRevenue->execute();
     $resRevenue = $stmtRevenue->fetch(PDO::FETCH_ASSOC);
     $totalRevenue = $resRevenue['total_revenue'] ?? 0;
 } catch (PDOException $e) {
-    // Trường hợp dự án không phân biệt trạng thái đơn hàng
     try {
         $sqlRevenueFallback = "SELECT SUM(total_price) AS total_revenue FROM bookings WHERE 1=1" . $dateCondition;
         $stmtRevenueFallback = $pdo->prepare($sqlRevenueFallback);
@@ -53,7 +51,7 @@ try {
                  WHERE (b.status = 'paid' OR b.status = 'completed' OR b.status = '1')
                  GROUP BY m.id, m.title
                  ORDER BY revenue DESC
-                 LIMIT 5"; // Top 5 phim doanh thu cao nhất
+                 LIMIT 5";
                  
     $stmtChart = $pdo->prepare($sqlChart);
     $stmtChart->execute();
@@ -64,7 +62,6 @@ try {
         $movieData[] = (float)$row['revenue'];
     }
 } catch (PDOException $e) {
-    // Nếu chưa có dữ liệu giao dịch thành công
     $movieLabels = [];
     $movieData = [];
 }
@@ -77,11 +74,9 @@ function getAdminPosterUrl($poster) {
     if (empty($poster)) {
         return 'https://placehold.co/800x1200/0f172a/f8fafc?text=No+Image';
     }
-    // Nếu là URL online (http/https)
     if (filter_var($poster, FILTER_VALIDATE_URL)) {
         return $poster;
     }
-    // Lùi về thư mục gốc để tìm trong uploads hoặc assets
     if (file_exists(__DIR__ . '/../uploads/' . $poster)) {
         return '../uploads/' . $poster;
     } elseif (file_exists(__DIR__ . '/../assets/images/' . $poster)) {
@@ -173,11 +168,7 @@ function renderMovieGrid($movies) {
                     <span class="absolute top-2 left-2 z-10 ' . $badgeBg . ' text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                         ' . $rating . '
                     </span>
-<<<<<<< HEAD
                     <img src="' . $posterUrl . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
-=======
-                    <img src="../uploads/' . $poster . '" onerror="this.src=\'https://placehold.co/400x600/0f172a/f8fafc?text=' . urlencode($title) . '\'"
->>>>>>> 4043c9bbef9437dcf07783004f662ee7d1f03c4d
                          alt="' . $title . '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 </div>
                 <div class="p-3">
@@ -272,11 +263,7 @@ function renderMovieGrid($movies) {
         <?php $bannerPoster = getAdminPosterUrl($movie['poster'] ?? ''); ?>
         <div class="banner-slide absolute inset-0 transition-opacity duration-700 <?php echo $i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'; ?>"
              data-index="<?php echo $i; ?>">
-<<<<<<< HEAD
             <img src="<?php echo $bannerPoster; ?>"
-=======
-            <img src="../uploads/<?php echo htmlspecialchars($movie['poster'] ?? ''); ?>"
->>>>>>> 4043c9bbef9437dcf07783004f662ee7d1f03c4d
                  onerror="this.src='https://placehold.co/1600x600/0f172a/f8fafc?text=CineStar'"
                  alt="<?php echo htmlspecialchars($movie['title']); ?>"
                  class="w-full h-full object-cover">
@@ -382,7 +369,7 @@ document.addEventListener("DOMContentLoaded", function() {
             datasets: [{
                 label: 'Doanh thu (VNĐ)',
                 data: movieData.length > 0 ? movieData : [0],
-                backgroundColor: 'rgba(244, 63, 94, 0.8)', // Tông màu Rose chuẩn CineStar
+                backgroundColor: 'rgba(244, 63, 94, 0.8)',
                 borderColor: 'rgba(244, 63, 94, 1)',
                 borderWidth: 1,
                 borderRadius: 8
