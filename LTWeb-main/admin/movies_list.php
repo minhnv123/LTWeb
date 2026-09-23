@@ -36,8 +36,21 @@ if (isset($_GET['delete_id'])) {
     exit();
 }
 
-// 3. Lấy danh sách phim (CRUD Read) bằng PDO
-$stmt = $pdo->query("SELECT * FROM movies ORDER BY id DESC");
+// 3. Cấu hình & Xử lý Phân trang
+$limit = 6; 
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $limit;
+
+$totalRows = $pdo->query("SELECT COUNT(*) FROM movies")->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+// 4. Lấy danh sách phim phân trang bằng PDO
+$sql = "SELECT * FROM movies ORDER BY id DESC LIMIT :limit OFFSET :offset";
+$stmt = $pdo->prepare($sql);
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $movies = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -73,7 +86,7 @@ $movies = $stmt->fetchAll();
         </div>
 
         <!-- Bảng Danh Sách Phim -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-4">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-300">
                     <thead class="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
@@ -147,6 +160,17 @@ $movies = $stmt->fetchAll();
                     </tbody>
                 </table>
             </div>
+
+            <!-- Nút Phân Trang -->
+            <?php if ($totalPages > 1): ?>
+                <div class="flex justify-center items-center gap-2 pt-6 pb-2">
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <a href="?page=<?= $i ?>" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all <?= $i === $page ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30' : 'bg-slate-800 text-slate-400 hover:text-white' ?>">
+                            <?= $i ?>
+                        </a>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

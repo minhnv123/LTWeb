@@ -32,14 +32,26 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'deleted') {
     $message = "Đã xóa rạp thành công!";
 }
 
-// 3. Lấy danh sách rạp kèm số lượng suất chiếu
-$stmt = $pdo->query("
-    SELECT c.*, COUNT(s.id) AS total_showtimes 
-    FROM cinemas c 
-    LEFT JOIN showtimes s ON s.cinema_id = c.id 
-    GROUP BY c.id 
-    ORDER BY c.id DESC
-");
+// 3. Cấu hình & Xử lý Phân trang
+$limit = 6; 
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $limit;
+
+$totalRows = $pdo->query("SELECT COUNT(*) FROM cinemas")->fetchColumn();
+$totalPages = ceil($totalRows / $limit);
+
+$sql = "SELECT c.*, COUNT(s.id) AS total_showtimes 
+        FROM cinemas c 
+        LEFT JOIN showtimes s ON s.cinema_id = c.id 
+        GROUP BY c.id 
+        ORDER BY c.id DESC
+        LIMIT :limit OFFSET :offset";
+
+$stmt = $pdo->prepare($sql);
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $cinemas = $stmt->fetchAll();
 ?>
 
@@ -75,7 +87,7 @@ $cinemas = $stmt->fetchAll();
     <?php endif; ?>
 
     <!-- Table Rạp -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden p-4">
         <?php if (empty($cinemas)): ?>
             <div class="py-12 text-center text-slate-500 italic text-sm">
                 <i class="fa-solid fa-building-circle-xmark text-4xl mb-3 text-slate-600"></i>
@@ -120,6 +132,17 @@ $cinemas = $stmt->fetchAll();
                     </tbody>
                 </table>
             </div>
+
+            <!-- Nút Phân Trang -->
+            <?php if ($totalPages > 1): ?>
+                <div class="flex justify-center items-center gap-2 pt-6 pb-2">
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <a href="?page=<?= $i ?>" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all <?= $i === $page ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30' : 'bg-slate-800 text-slate-400 hover:text-white' ?>">
+                            <?= $i ?>
+                        </a>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -147,5 +170,4 @@ function confirmDeleteCinema(id) {
     });
 }
 </script>
-
 <?php include_once 'footer.php'; ?>
